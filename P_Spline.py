@@ -8,7 +8,7 @@ import numpy as np
 import scipy as sp
 from copy import deepcopy
 import h5py
-
+import matplotlib.pyplot as plt
 
 
 """import data"""
@@ -17,8 +17,8 @@ img = np.array(f["img"].value)
 f.close()
 
 """Response variable Y = 1066*307200"""
-Y =  img.reshape((img.shape[0], -1), order='F')
-
+#Y =  img.reshape((img.shape[0], -1), order='F')
+Y =  img.reshape((img.shape[0], -1))
 """delete img since covering a lot of memory"""
 del img
 
@@ -26,7 +26,7 @@ del img
 X = np.linspace(0,1065,1066)
 
 """define number of splines and order of splines"""
-no_of_splines = 1065
+no_of_splines = 200
 order_of_spline = 3
 
 """define knots"""
@@ -94,7 +94,7 @@ del m, mask_l, mask_r, maxi, n, new_knots, order_of_spline, prev_bases, right, r
 coefficients_pixels = []
 
 """define type of penalty to use and the value of lambda as smoothing parameter"""
-lambda_param = [0.6]  
+lambda_param = [0.0001]  
 """create and initialize penalty matrix and multiply the matrix with lambda_param"""
 Ps = []
 p = sp.sparse.eye(no_of_splines).tocsc()
@@ -115,10 +115,10 @@ del Penalty_matrix, no_of_splines
     for each pixels till 307200 pixels,link_function = 'identity', distribution = 'normal'  """
 for i in range(307200):
     #initialise coefficients m =1065(splines) n=1066(time points) no_splines = 1065 min_n_m = 1065"""
-    coefficients = np.ones((1065,1)) * np.sqrt(np.finfo(np.float64).eps) #is all together then coefficient will be 1065*307200
+    coefficients = np.ones((200,1)) * np.sqrt(np.finfo(np.float64).eps) #is all together then coefficient will be 1065*307200
     #Initialise inverse of a diagonal matrix (D_inv). D is a Diagonal matrix with singular values"""
     #singular values are eigenvalues/eigenvectors 1<= value <= min(basis_matrix.shape) hence taking highest value which is 1064
-    D_inverse = np.zeros((1064, 1064)).T
+    D_inverse = np.zeros((199, 199)).T
     #Define and initialise weights with ones for each response"""
     weights = np.ones_like(Y[:,i]).astype('f') #replaces values in Y[:,i] by 1. [123] becomes [111]
     #multiply the model matrix by the spline basis coefficients (bZ)
@@ -133,13 +133,13 @@ for i in range(307200):
     Q, R = np.linalg.qr(WB[0].todense()) 
     #singular value decomposition
     #U, D, Vt = np.linalg.svd(np.vstack([R, cholesky_matrix.T])) , k=eigenvalues
-    U, D, Vt = sp.sparse.linalg.svds(sp.sparse.vstack([sp.sparse.csc_matrix(R), sp.sparse.csc_matrix(cholesky_matrix.T)]),k=1064)
+    U, D, Vt = sp.sparse.linalg.svds(sp.sparse.vstack([sp.sparse.csc_matrix(R), sp.sparse.csc_matrix(cholesky_matrix.T)]),k=199)
     # mask out small singular values (RANK deficiency taken care of)
     svd_mask = D <= (D.max() * np.sqrt(np.finfo(np.float64).eps))
     # invert the singular values and fill the D_inverse as D^-1
     np.fill_diagonal(D_inverse, D**-1)
     # keep only top portion of U
-    U1 = U[:1065,:]
+    U1 = U[:200,:]
     B = Vt.T.dot(D_inverse).dot(U1.T).dot(Q.T)
     #Estimate coefficients. A means to flatten in column-major order 
     coefficients_new = B.dot(pseudo_data).A.flatten() 
@@ -150,7 +150,22 @@ del D_inverse,weights,linear_predictor,W,pseudo_data,WB,Q,R,U,D,Vt,svd_mask,U1,B
 
 """convert coefficients_pixels from a list to numpy array"""
 coefficients_pixels = np.asarray(coefficients_pixels)
-        
-    
 
+"""Convert sparse basis matrix to dense basis matrix"""
+basis_matrix = basis_matrix.todense()
 
+"""Estimate of Y_hat"""
+Y_hat = coefficients_pixels.dot(basis_matrix.T)
+Y_hat = np.squeeze(np.asarray(Y_hat))
+
+"""Verification of p-splines"""
+x = np.linspace(0, 1065, 1066)
+""" Plot the data """
+plt.figure(figsize=(10,8))
+plt.scatter(x, Y[:,0], label = 'Original Y', marker = 'o', s=10)
+plt.plot(np.delete(x,[0,1065]), np.delete(Y_hat,[0,1065]), label = 'Estimate Y', linewidth =1.0 ,color='r')
+plt.xlabel(r'Time points (X)',fontweight='bold',fontsize=10)
+plt.ylabel(r'Response variable (Y)',fontweight='bold', fontsize=10)
+plt.legend(prop={'size': 12})
+plt.title(r'$\lambda = 0.0001$, # knots = 200', fontsize=15)
+plt.show()
