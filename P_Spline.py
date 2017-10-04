@@ -114,8 +114,8 @@ del Penalty_matrix, no_of_splines
 """following is the iteration for each pixel to determine the coefficient
     for each pixels till 307200 pixels,link_function = 'identity', distribution = 'normal'  """
 for i in range(307200):
-    #initialise coefficients m =1065(splines) n=1066(time points) no_splines = 1065 min_n_m = 1065"""
-    coefficients = np.ones((200,1)) * np.sqrt(np.finfo(np.float64).eps) #is all together then coefficient will be 1065*307200
+    #initialise coefficients m =200(splines) n=1066(time points) no_splines = 200 min_n_m = 200"""
+    coefficients = np.ones((200,1)) * np.sqrt(np.finfo(np.float64).eps) #is all together then coefficient will be 200*307200
     #Initialise inverse of a diagonal matrix (D_inv). D is a Diagonal matrix with singular values"""
     #singular values are eigenvalues/eigenvectors 1<= value <= min(basis_matrix.shape) hence taking highest value which is 1064
     D_inverse = np.zeros((199, 199)).T
