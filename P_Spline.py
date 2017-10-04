@@ -123,7 +123,7 @@ for i in range(307200):
     #singular values are eigenvalues/eigenvectors 1<= value <= min(basis_matrix.shape) hence taking highest value which is 1064
     D_inverse = numpy.zeros((199, 199)).T
     #Define and initialise weights with ones for each response"""
-    weights = numpy.ones_like(Y[:,0]).astype('f') #replaces values in Y[:,i] by 1. [123] becomes [111]
+    weights = numpy.ones_like(Y[:,i]).astype('f') #replaces values in Y[:,i] by 1. [123] becomes [111]
     #multiply the model matrix by the spline basis coefficients (bZ)
     linear_predictor = basis_matrix.dot(coefficients).flatten()
     #create weight matrix
