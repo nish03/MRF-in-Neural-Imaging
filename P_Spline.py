@@ -154,6 +154,13 @@ del D_inverse,weights,linear_predictor,W,pseudo_data,WB,Q,R,U,D,Vt,svd_mask,U1,B
 """convert coefficients_pixels from a list to numpy array"""
 coefficients_pixels = numpy.asarray(coefficients_pixels)
 
+
+"""save the coefficients for importing in different files"""
+import csv 
+with open('coefficients_pixels.csv','w',newline='') as fp:
+     a =csv.writer(fp,delimiter=',')
+     a.writerows(coefficients_pixels)
+     
 """Convert sparse basis matrix to dense basis matrix"""
 basis_matrix = basis_matrix.todense()
 
