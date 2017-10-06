@@ -14,7 +14,7 @@ import multiprocessing
 multiprocessing.cpu_count()
 
 """import data"""
-f = h5py.File("sep_1072240.mat", "r")
+f = h5py.File("D:/Tu dresden/4th Sem/Present/After literature review/Datasets/sep_1072240.mat", "r")
 img = numpy.array(f["img"].value)
 f.close()
 
@@ -120,7 +120,7 @@ for i in range(307200):
     #initialise coefficients m =200(splines) n=1066(time points) no_splines = 200 min_n_m = 200"""
     coefficients = numpy.ones((200,1)) * numpy.sqrt(numpy.finfo(numpy.float64).eps) #is all together then coefficient will be 200*307200
     #Initialise inverse of a diagonal matrix (D_inv). D is a Diagonal matrix with singular values"""
-    #singular values are eigenvalues/eigenvectors 1<= value <= min(basis_matrix.shape) hence taking highest value which is 1064
+    #singular values are eigenvalues/eigenvectors 1<= value <= min(basis_matrix.shape) hence taking highest value which is 199
     D_inverse = numpy.zeros((199, 199)).T
     #Define and initialise weights with ones for each response"""
     weights = numpy.ones_like(Y[:,i]).astype('f') #replaces values in Y[:,i] by 1. [123] becomes [111]
@@ -131,6 +131,7 @@ for i in range(307200):
     #pseudo data for iterations
     pseudo_data = W.dot(linear_predictor + (Y[:,i] - linear_predictor) * numpy.ones_like(linear_predictor))
     # common matrix product
+    #THIS SHOULD BE W instead of weights just enquire"""
     WB = weights.dot(basis_matrix)
     #QR decomposition
     Q, R = numpy.linalg.qr(WB[0].todense()) 
@@ -157,18 +158,37 @@ coefficients_pixels = numpy.asarray(coefficients_pixels)
 
 """save the coefficients for importing in different files"""
 import csv 
-with open('coefficients_pixels.csv','w',newline='') as fp:
+with open('coefficients_pixels_0.0001.csv','w',newline='') as fp:
      a =csv.writer(fp,delimiter=',')
      a.writerows(coefficients_pixels)
      
 """Convert sparse basis matrix to dense basis matrix"""
 basis_matrix = basis_matrix.todense()
 
-"""Estimate of Y_hat"""
+
+"""Estimate Y which will be Y_hat"""
 Y_hat = coefficients_pixels.dot(basis_matrix.T)
 Y_hat = numpy.squeeze(numpy.asarray(Y_hat))
 
-"""Verification of fitting of p-splines """
+
+"""Generalised Cross Validation"""
+m = Y.shape[0]
+gamma = 1.4 #weighting to increase the impact of the influence matrix on the score
+BW = WB[0].todense().T
+B = numpy.asarray(B)
+BW = numpy.asarray(BW)
+edof = numpy.multiply(BW,B).sum() #estimates effective degrees of freedom.computes the only diagonal of the influence matrix and sums it
+GCV = m * numpy.power(Y - Y_hat.T, 2).sum() / numpy.power(m - gamma * edof,2)
+
+"""Akaike Information Criterion"""
+AIC = -2*numpy.log(numpy.exp(-(Y - Y_hat.T)**2/(2)) / (2 * numpy.pi)**0.5 ).sum() + 2*edof
+
+"""Mean squared error"""
+import sklearn.metrics
+MSE = sklearn.metrics.mean_squared_error(Y,Y_hat.T)
+
+
+"""Verification of fitting of p-splines using plots"""
 x = numpy.linspace(0, 1065, 1066)
 matplotlib.pyplot.figure(figsize=(10,8))
 matplotlib.pyplot.scatter(x, Y[:,0], label = 'Original Y', marker = 'o', s=10)
