@@ -2,7 +2,54 @@
 import numpy
 import opengm
 
+#################################################################
+######                    Synthetic model  
+######Grid = 100*100, Number of Labels= 20, Coupling strength = 0.5
+######Truncation threshold = 10
+######Unary potential = random 
+######Spatial regularizers/functions used: 1) Potts
+######                           2) Squared Difference
+######                           3) Truncated Absolute Difference
+######                           4) Truncated Squared Difference
+#################################################################
+numLabels=20
+shape=(100,100)
+unaries=numpy.random.rand(shape[0],shape[1],numLabels)
 
+###Potts function as spatial regularizer
+potts=opengm.PottsFunction([numLabels,numLabels],0.0,0.5)
+gm=opengm.grid2d2Order(unaries=unaries,regularizer=potts)
+
+###Squared difference as spatial regularizer.Use TruncatedSquaredDifference
+### but trick is to keep threshold high like 400 so that it becomes squared distance
+tsd=opengm.TruncatedSquaredDifferenceFunction([numLabels,numLabels],400,0.5)
+gm=opengm.grid2d2Order(unaries=unaries,regularizer=tsd)
+
+###Truncated Absolute Difference as spatial regularizer
+tad=opengm.TruncatedAbsoluteDifferenceFunction([numLabels,numLabels],10,0.5)
+gm=opengm.grid2d2Order(unaries=unaries,regularizer=tad)
+
+###Truncated Squared Difference as spatial regularizer
+tsd=opengm.TruncatedSquaredDifferenceFunction([numLabels,numLabels],10,0.5)
+gm=opengm.grid2d2Order(unaries=unaries,regularizer=tsd)
+
+
+
+##############################################################
+######Synthetic model  Grid = 40*40 #####
+##############################################################
+numLabels=2
+shape=(40,40)
+unaries=numpy.random.rand(shape[0],shape[1],numLabels)
+potts=opengm.PottsFunction([numLabels,numLabels],0.0,0.5)
+gm=opengm.grid2d2Order(unaries=unaries,regularizer=potts)
+
+
+
+
+#################################################################
+###               Intraoperative data model
+#################################################################
 img = numpy.reshape(discretized_T_cropped, (-1, 640))
 #convert the values in the range of 0 to 1  0=black 1=white
 img = numpy.asarray(img).astype(float)/255
@@ -41,15 +88,6 @@ for l in range(numLabels):
    f[l,l]=0  
 fid=gm.addFunction(f)
 
-#Truncated Absolute Difference as binary function
-f=opengm.TruncatedAbsoluteDifferenceFunction(shape=[2,2],truncate=1,weight=0.3)
-fid=gm.addFunction(f)
-
-#Truncated  Squared Difference function as spatial regulariser
-f=opengm.TruncatedSquaredDifferenceFunction(shape=[2,2],truncate=1,weight=0.3)
-fid=gm.addFunction(f)
-
-
 #add binary factors
 for y in range(dimy):   
    for x in range(dimx):
@@ -62,13 +100,3 @@ for y in range(dimy):
 
 
 opengm.hdf5.saveGraphicalModel(gm,'model.h5','gm')
-
-
-#####################################################
-######Synthetic model#####
-#####################################################
-numLabels=2
-shape=(40,40)
-unaries=numpy.random.rand(shape[0],shape[1],numLabels)
-potts=opengm.PottsFunction([numLabels,numLabels],0.0,0.5)
-gm=opengm.grid2d2Order(unaries=unaries,regularizer=potts)
