@@ -92,6 +92,9 @@ matplotlib.pyplot.show()
 ###########################################
 #Inference with TreeReweightedBp algorithm
 ###########################################
+#without damping
+inf_trbp=opengm.inference.TreeReweightedBp(gm)
+#with damping
 inf_trbp=opengm.inference.TreeReweightedBp(gm,parameter=opengm.InfParam(damping=0.05))
 callback=PyCallback(shape,numLabels)
 visitor=inf_trbp.pythonVisitor(callback,visitNth=1)
@@ -106,6 +109,3 @@ argmin=inf_trbp.arg()
 result=argmin.reshape(dimx,dimy)
 imgplot = matplotlib.pyplot.imshow(result)
 matplotlib.pyplot.show()
-
-
-
