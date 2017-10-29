@@ -29,7 +29,7 @@ imgplot = plt.imshow(Y[0,:].reshape(640,480))
 plt.show()
 
 ###########################################################
-#####################define basis marix####################
+#####################define basis matrix####################
 ###########################################################
 #"""define observation variable X = 1066 points"""
 X = numpy.linspace(0,1065,1066)
@@ -114,7 +114,7 @@ numLabels = 10
 numVar=dimx*dimy
 numberOfStates=numpy.ones(numVar,dtype=opengm.index_type)*numLabels
 gm=opengm.graphicalModel(numberOfStates)
-sigma = numpy.full((no_of_splines,),0.1) #offset
+sigma = numpy.full((no_of_splines,),0.06) #offset
 
 #add the offset in the coefficients
 a_offset = numpy.zeros((no_of_splines,numVar,numLabels))
@@ -126,27 +126,29 @@ for i in range(numVar):
 t1=time.time()
 print t1-t0
 
+###########################################################################
+######## A very fast L2 norm to save latency
+###########################################################################
 def fast_norm(x):
-   ###Returns a norm of a 1-D array/vector `x`.    
+   ###   Returns a norm of a 1-D array/vector `x`.    
    ###   Turns out it's much faster than linalg.norm in case of 1-D arrays.
    ###   Measured with up to ~80% increase in speed.
    return sqrt(x.dot(x.conj()))
    
-   
+###########################################################################
+######calculate and add unary energies
+########################################################################### 
 #calculate unary energies for each pixel	 
 unary_energy = numpy.zeros((numVar,numLabels))
-
 t0=time.time()
 for i in range(numVar):
     for l in range(numLabels):
-	    unary_energy[i,l] = fast_norm(Y[:,i] - basis.dot(a_offset[:,i,l])) / sqrt(1066) 
+	    unary_energy[i,l] = fast_norm(Y[:,i] - basis.dot(a_offset[:,i,l])) / sqrt(1066)
 
 t1=time.time()
 print t1-t0
-
 #reshape unary energies
 unary_energy = unary_energy.reshape(dimx,dimy,numLabels)
-
 #add unary function and factors
 for x in range(dimx):
 	for y in range(dimy):
@@ -155,10 +157,13 @@ for x in range(dimx):
 		#add unary factor to the graphical model
 		gm.addFactor(fid,x*dimy+y)
 		
+
+
+###########################################################################
+######calculate and add binary energies
+###########################################################################
 #reshape a_offset
-a_offset = a_offset.reshape(no_of_splines,dimx,dimy,numLabels)
-
-
+a_offset = a_offset.reshape(no_of_splines,dimx,dimy,numLabels) 
 t0=time.time()	 
 #add binary function and factors
 for x in range(dimx):
@@ -185,6 +190,9 @@ for x in range(dimx):
 t1=time.time()
 print t1-t0 
 
+###########################################################################
+######### saving and loading the graphical model
+###########################################################################
 #save the dataset
 opengm.hdf5.saveGraphicalModel(gm,'model.h5','gm')
 #load the dataset
@@ -203,7 +211,7 @@ argmin=inf_trws.arg()
 #Evaluate the minimum energy
 print "energy ",gm.evaluate(argmin)
 #Evaluate the bound
-bound = inf_trws.bound()
+print "bound", inf_trws.bound()
 result=argmin.reshape(dimx,dimy)
 # plot final result
 imgplot = plt.imshow(result)
@@ -218,19 +226,32 @@ a_inf = numpy.zeros((no_of_splines,numVar))
 for i in range(numVar):
 	a_inf[:,i] = a[:,i] + (argmin[i]-4.5)*sigma
 	
+	
+##############################################################################
+####### MSE (Vector)
+##############################################################################
+mse_spline_vector = ((Y - basis.dot(a)) ** 2).mean()
+mse_inf_vector    = ((Y - basis.dot(a_inf)) ** 2).mean()
+
+##############################################################################
+####### MSE (Time points) for a single pixel
+##############################################################################
 mse_spline = numpy.zeros((1066,))
 mse_inf    = numpy.zeros((1066,))	
-for i,j in range(numVar,1066):
-    mse_spline[j] = ((Y[:,i] - basis.dot(a[:,i])) ** 2).mean()
-    mse_inf[j]    = ((Y[:,i] - basis.dot(a_inf[:,i])) ** 2).mean()
+for i in range(1066):
+    mse_spline[i] = ((Y[i,0] - basis.dot(a[:,0])[i]) ** 2).mean()
+    mse_inf[i]    = ((Y[i,0] - basis.dot(a_inf[:,0])[i]) ** 2).mean()
 	
-x = numpy.linspace(0, 1065, 1066)
+
+##############################################################################
+######## Plot MSE of spline VS MSE after inference
+##############################################################################
+x = numpy.linspace(0,1065,1066)
 matplotlib.pyplot.figure(figsize=(10,8))
-matplotlib.pyplot.plot(x, mse_spline, label = 'MSE (Spline)', linewidth =1.0 ,color='r')
-matplotlib.pyplot.plot(x, mse_inf,    label = 'MSE (After Inference)', linewidth =1.0 ,color='b')
-matplotlib.pyplot.xlabel(r'Time points (X)',fontweight='bold',fontsize=10)
+matplotlib.pyplot.plot(x, mse_spline,'r-',label = 'MSE (Spline)')
+matplotlib.pyplot.plot(x, mse_inf, 'b-',label = 'MSE (After Inference)')
+matplotlib.pyplot.xlabel(r'Pixels (X)',fontweight='bold',fontsize=10)
 matplotlib.pyplot.ylabel(r'Mean Square Error (MSE)',fontweight='bold', fontsize=10)
 matplotlib.pyplot.legend(prop={'size': 12})
 matplotlib.pyplot.title(r'Univariate Regression vs Spatial Regularizer (Offset = 0.11)', fontsize=15)
 matplotlib.pyplot.show()
-
