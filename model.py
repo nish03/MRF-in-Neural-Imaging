@@ -87,7 +87,23 @@ lambda_param = 0.0001
 #estimate the coefficients
 spline_coeff = numpy.linalg.solve(numpy.dot(basis.T,basis)+lambda_param*numpy.dot(D_k,D_k.T),numpy.dot(basis.T,Y))
 Y_hat_spline = basis.dot(spline_coeff)
-MSE = ((Y - Y_hat_spline) ** 2).mean()
+s = numpy.sum((Y-Y_hat_spline)**2)
+#inverse of numpy.dot(basis.T,basis)  + lambda_param * numpy.dot(D_k,D_k.T)
+Q = numpy.linalg.inv(numpy.dot(basis.T,basis) + lambda_param * numpy.dot(D_k,D_k.T))
+#diagonal elements  of hat matrix 
+t = numpy.sum(numpy.diag(Q.dot(numpy.dot(basis.T,basis))))
+
+
+###########################################################
+#####################AIC, GCV, MSE##########################
+###########################################################
+GCV = s / (basis.shape[0] - t)**2
+AIC = -2*numpy.log(numpy.exp(-(Y - Y_hat_spline)**2/(2)) / (2 * numpy.pi)**0.5 ).sum() + 2*t
+MSE =  ((Y - Y_hat_spline) ** 2).mean()
+
+
+#"""total time taken to run the code"""
+print("--- %s seconds ---" % (time.time() - start_time))
 
 ##################################################################################################
 ############################Principal component analysis for #####################################
@@ -128,6 +144,7 @@ plt.show()
 #determining the number of clusters
 from sklearn.cluster import KMeans
 from scipy.spatial import distance
+#compute BIC
 def compute_bic(kmeans,X):
     """
     Computes the BIC metric for a given clusters
@@ -173,6 +190,17 @@ plt.ylabel('BIC Value')
 plt.title('BIC Method')
 plt.show()
 
+#compute AIC
+from sklearn import mixture
+range_n_clusters = range(1, 50)
+aic_list = []
+for n_clusters in range_n_clusters:
+     model = mixture.GaussianMixture(n_components=n_clusters, init_params='kmeans')
+     model.fit(pca_coeff)
+     aic_list.append(model.aic(pca_coeff))
+plt.plot(range_n_clusters, aic_list, marker='o')
+plt.show()
+  
 #elbow method
 distortions = []
 K = range(1,20)
