@@ -105,6 +105,18 @@ MSE =  ((Y - Y_hat_spline) ** 2).mean()
 #"""total time taken to run the code"""
 print("--- %s seconds ---" % (time.time() - start_time))
 
+###################################################################
+###################MSE Error evaluation############################
+###################################################################
+#average time courses of Y_hat_spline
+Y_avg_spline = numpy.zeros(1066)
+for i in range(1066):
+       Y_avg_spline[i] = (Y_hat_spline[i,:].mean())
+	   
+MSE_spline  = numpy.zeros(1066)
+for i in range(1066):
+       MSE_spline[i] = (Y[i,:].mean() - Y_hat_spline[i,:].mean())**2
+
 ##################################################################################################
 ############################Principal component analysis for #####################################
 ###########selecting first p (p is less than knots) and neglecting the first 'p'##################
@@ -192,7 +204,7 @@ plt.show()
 
 #compute AIC
 from sklearn import mixture
-range_n_clusters = range(1, 50)
+range_n_clusters = range(1, 20)
 aic_list = []
 for n_clusters in range_n_clusters:
      model = mixture.GaussianMixture(n_components=n_clusters, init_params='kmeans')
@@ -273,11 +285,11 @@ unary_energy = numpy.zeros((numVar,numLabels),dtype=numpy.float32)
 t0=time.time()
 for i in range(numVar):
     for l in range(numLabels):
-	    unary_energy[i,l] = fast_norm(Y[:,i] - basis.dot(means_inv_PCA[:,l]))                                                                     #L2 norm
-		#unary_energy[i,l] = sum(abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])))                                                                      #L1 norm
-		#unary_energy[i,l] = max(abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])))                                                                      #max norm
-		#unary_energy[i,l] = sum ( numpy.minimum ( abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])) , threshold_l1 ) )                                  #trunc L1 norm
-		#unary_energy[i,l] = sqrt( sum ( numpy.minimum ( (Y[:,i] - basis.dot(means_inv_PCA[:,l]))**2 , threshold_l2 ) ) )                          #trunc L2 norm
+	    unary_energy[i,l] = fast_norm(Y[:,i] - basis.dot(means_inv_PCA[:,l]))                                                                       #L2 norm
+		#unary_energy[i,l] = sum(abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])))                                                                       #L1 norm
+		#unary_energy[i,l] = max(abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])))                                                                       #max norm
+		#unary_energy[i,l] = sum ( numpy.minimum ( abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])) , threshold_l1 ) )                                   #trunc L1 norm
+		#unary_energy[i,l] = sqrt( sum ( numpy.minimum ( (Y[:,i] - basis.dot(means_inv_PCA[:,l]))**2 , threshold_l2 ) ) )                           #trunc L2 norm
 		#unary_energy[i,l]  =  sum ( abs(Y[:,i] - basis.dot(means_inv_PCA[:,l])) / ( abs(Y[:,i]) + abs(basis.dot(means_inv_PCA[:,l])) ) )           #canberra distance
 
 t1=time.time()
@@ -400,7 +412,41 @@ inv_pca_coeff = eigenvector_matrix.dot(centroid_labels.T)
 ##############################################################################
 ######################## Estimating  Y_hat ###################################
 ##############################################################################
-Y_hat = basis.dot(inv_pca_coeff)
-MSE =  ((Y - Y_hat) ** 2).mean()
-imgplot = plt.imshow(Y_hat[0,:].reshape(640,480))
-plt.show()
+Y_hat_mrf = basis.dot(inv_pca_coeff)
+
+
+##############################################################################
+######################### MSE and time series Evaluation #####################
+##############################################################################
+Y_avg_MRF = numpy.zeros(1066)
+for i in range(1066):
+       Y_avg_MRF[i] = (Y_hat_mrf[i,:].mean())
+MSE_MRF = numpy.zeros(1066)
+for i in range(1066):
+    MSE_MRF[i] =  (Y[i,:].mean() - Y_hat_mrf[i,:].mean()) ** 2
+
+
+##############################################################################
+######################## plot MSE of spline and MRF ##########################
+##############################################################################
+#first plot MSE before and after inference
+x = numpy.linspace(0, 1065, 1066)
+matplotlib.pyplot.figure(figsize=(10,8))
+matplotlib.pyplot.plot(x, MSE_spline, label = 'MSE_spline', linewidth = 1.0, color='r')
+matplotlib.pyplot.plot(x, MSE_MRF, label = 'MSE_MRF', linewidth =1.0 ,color='b')
+matplotlib.pyplot.xlabel(r'Time points (X)',fontweight='bold',fontsize=10)
+matplotlib.pyplot.ylabel(r'Mean square error',fontweight='bold', fontsize=10)
+matplotlib.pyplot.legend(prop={'size': 12})
+matplotlib.pyplot.title(r'Mean Square error for time points for all pixels', fontsize=15)
+matplotlib.pyplot.show()
+
+#plot averaged time courses after spline vs after MRF
+x = numpy.linspace(0, 1065, 1066)
+matplotlib.pyplot.figure(figsize=(10,8))
+matplotlib.pyplot.plot(x, Y_avg_spline, label = 'Y_avg_spline', linewidth = 1.0, color='r')
+matplotlib.pyplot.plot(x, Y_avg_MRF, label = 'Y_avg_MRF', linewidth =1.0 ,color='b')
+matplotlib.pyplot.xlabel(r'Time points (X)',fontweight='bold',fontsize=10)
+matplotlib.pyplot.ylabel(r'Y_estimate',fontweight='bold', fontsize=10)
+matplotlib.pyplot.legend(prop={'size': 12})
+matplotlib.pyplot.title(r'Y_estimate after spline vs after MRF', fontsize=15)
+matplotlib.pyplot.show()
