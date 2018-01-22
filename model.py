@@ -18,7 +18,7 @@ from sklearn import mixture
 import vigra
 from vigra import graphs
 import h5py
-
+from sklearn.decomposition import PCA
 
 print "Loading data"
 t0=time.time()
@@ -49,7 +49,6 @@ print "Loading data took", t1-t0, "secs"
 #############################################################
 #neuronal activity 
 #############################################################
-t_start = time.time()
 avg = numpy.zeros(dt)
 for i in range(dt):
        avg[i] = (S1024_raw[:,i].mean())
@@ -75,6 +74,8 @@ print "Peak neuronal activity happens at: ",  neuro_activity_max, "time point"
 ##########################################################
 #define basis function
 ########################################################## 
+print "Core script starts"
+t_start = time.time()
 print "Running P-Spline" 
 t0 = time.time()
 
@@ -115,7 +116,7 @@ basis = basis[:-2]
 ###########################################################
 #define penalty function
 ###########################################################	
-lambda_param = 0.0
+lambda_param = 0.02
 D = numpy.identity(basis.shape[1])
 D_k = numpy.diff(D,n=1,axis=-1)  
 spline_coeff_raw = numpy.linalg.solve(numpy.dot(basis.T,basis)+lambda_param*numpy.dot(D_k,D_k.T),numpy.dot(basis.T,S1024_raw.T))
@@ -124,21 +125,36 @@ t1 = time.time()
 print "Total time for running P-Spline", t1-t0, "secs"
 
 ###########################################################
+#perform principal component analysis
+###########################################################
+pca = PCA(n_components=num_knots)
+pca.fit(spline_coeff_raw.T)
+var1= numpy.cumsum(numpy.round(pca.explained_variance_ratio_, decimals=4)*100)
+components = numpy.argmax(numpy.unique(var1)) + 1
+pca = PCA(n_components=components)
+pca.fit(spline_coeff_raw.T)
+eigenvector_matrix = pca.components_
+spline_coeff_raw = pca.fit_transform(spline_coeff_raw.T) 
+
+
+###########################################################
 #define discretization function
 ###########################################################
 print "Discretization starts"
 
-num_clusters = 4
+t0 = time.time()
+num_clusters = 5
 gmm = mixture.GaussianMixture(n_components=num_clusters)
 t0=time.time()
-gmm.fit(spline_coeff_raw.T)
+gmm.fit(spline_coeff_raw)
 t1=time.time()
 print "Time taken for discretization of raw data is: ", t1-t0
-labels = gmm.predict(spline_coeff_raw.T)
-# imgplot = plt.imshow(labels.reshape(dx,dy))
-# plt.show()
+labels = gmm.predict(spline_coeff_raw)
+imgplot = plt.imshow(labels.reshape(dx,dy))
+plt.show()
 means  = gmm.means_
 
+means_inv_PCA = eigenvector_matrix.T.dot(means.T)
 
 
 ##############################################################
@@ -151,11 +167,16 @@ n_pixels=dx*dy
 def fast_norm(x):
     return sqrt(x.dot(x.conj()))
 
+time_means = basis.dot(means_inv_PCA)
+t0 = time.time()
+print "Assigning pixel unaries starts"
 #define pixel unaries 
 pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
-for i in range(n_pixels):
-    for l in range(n_labels_pixels):
-        pixel_unaries[i,l] = fast_norm(S1024_raw.T[:,i] - basis.dot(means.T[:,l])) #L2 norm
+for (i, l) in product(range(n_pixels), range(n_labels_pixels)):
+     pixel_unaries[i,l] = fast_norm(S1024_raw.T[:,i] - time_means[:,l])
+     
+t1=time.time()
+print "Assigning pixel unaries took", t1-t0
 
 #define pixel regularizer
 pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=1.0/n_labels_pixels,truncate=None)			
@@ -256,5 +277,7 @@ plt.show()
 # centroid_labels = numpy.asarray(centroid_labels)
 # Y_hat_mrf = basis.dot(centroid_labels.T)
 # Sraw_mrf = Y_hat_mrf.T
+
+
 
 
