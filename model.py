@@ -2,7 +2,6 @@
 #import packages
 #########################################################
 print "importing libraries"
-
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -19,24 +18,14 @@ import vigra
 from vigra import graphs
 import h5py
 from sklearn.decomposition import PCA
+import itertools
+import ThermalImagingAnalysis as tai
+import ActivityPatterns as ap
 
-print "Loading data"
-t0=time.time()
-#############################################################
-# Load raw Data
-#############################################################
-#load training data
-# pTrainDataT = '626510_sinus_50pxDiameter.mat'
-# pTrainDataT = scipy.io.loadmat(pTrainDataT)
-# #ground truth
-# groundtruth = pTrainDataT['groundtruth']
-# posIdx = numpy.flatnonzero(groundtruth.T)
-# dx,dy=    groundtruth.shape   
-# #raw data
-# S1024_raw = pTrainDataT['S1024_raw']
-# dx,dy,dt  = S1024_raw.shape
-# S1024_raw = S1024_raw.reshape(dx*dy, dt)
 
+###########################################################
+#####################load   data##########################
+###########################################################
 f = h5py.File("sep_1072240.mat", "r")
 S1024_raw = numpy.array(f["img"].value)
 dy,dx,dt  = S1024_raw.T.shape
@@ -44,42 +33,10 @@ S1024_raw =  S1024_raw.reshape((S1024_raw.shape[0], -1))
 f.close()
 S1024_raw = S1024_raw.T
 
-t1=time.time()
-print "Loading data took", t1-t0, "secs"
-#############################################################
-#neuronal activity 
-#############################################################
-avg = numpy.zeros(dt)
-for i in range(dt):
-       avg[i] = (S1024_raw[:,i].mean())
-
-neuro_activity_max = numpy.argmax(avg)
-
-# x = numpy.linspace(0, dt-1, dt)
-# matplotlib.pyplot.figure(figsize=(10,8))
-# matplotlib.pyplot.plot(x, avg, label = 'Averaged time course', linewidth = 1.0, color='r')
-# matplotlib.pyplot.xlabel(r'Time points (t)',fontweight='bold',fontsize=10)
-# matplotlib.pyplot.ylabel(r'Intensity',fontweight='bold', fontsize=10)
-# matplotlib.pyplot.legend(prop={'size': 12})
-# matplotlib.pyplot.title(r'Time vs Intensity', fontsize=15)
-# matplotlib.pyplot.show()
-	   
-image = S1024_raw[:,neuro_activity_max].reshape(dx,dy)
-image = numpy.float32(image)
-# imgplot = plt.imshow(S1024_raw[:,neuro_activity_max].reshape(dx,dy))
-# plt.show()
-	   
-print "Peak neuronal activity happens at: ",  neuro_activity_max, "time point"
-
-##########################################################
-#define basis function
-########################################################## 
-print "Core script starts"
-t_start = time.time()
-print "Running P-Spline" 
-t0 = time.time()
-
-num_knots = 80
+###########################################################
+#####################define basis matrix####################
+###########################################################
+num_knots = 200
 X = numpy.linspace(0, dt - 1, dt)
 no_of_splines = num_knots
 order_of_spline = 3
@@ -111,21 +68,19 @@ for m in range(2, order_of_spline + 2):
     prev_bases = basis[-2:]
     basis = left + right
         
-basis = basis[:-2]  
+basis = basis[:-2] 
 
 ###########################################################
-#define penalty function
-###########################################################	
+#####################penalise spline#######################
+###########################################################
 lambda_param = 0.02
 D = numpy.identity(basis.shape[1])
 D_k = numpy.diff(D,n=1,axis=-1)  
 spline_coeff_raw = numpy.linalg.solve(numpy.dot(basis.T,basis)+lambda_param*numpy.dot(D_k,D_k.T),numpy.dot(basis.T,S1024_raw.T))
 
-t1 = time.time()
-print "Total time for running P-Spline", t1-t0, "secs"
 
 ###########################################################
-#perform principal component analysis
+############Principal component analysis  #################
 ###########################################################
 pca = PCA(n_components=num_knots)
 pca.fit(spline_coeff_raw.T)
@@ -134,16 +89,25 @@ components = numpy.argmax(numpy.unique(var1)) + 1
 pca = PCA(n_components=components)
 pca.fit(spline_coeff_raw.T)
 eigenvector_matrix = pca.components_
-spline_coeff_raw = pca.fit_transform(spline_coeff_raw.T) 
+spline_coeff_raw = spline_coeff_raw.T.dot(eigenvector_matrix.T)
+
+###########################################################
+############Determining number of clusters  ###############
+###########################################################
+# range_n_clusters = range(1, 50)
+# aic_list = []
+# for n_clusters in range_n_clusters:
+     # model = mixture.GaussianMixture(n_components=n_clusters, init_params='kmeans')
+     # model.fit(spline_coeff_raw)
+     # aic]list.append(model.aic(spline_coeff_raw))
+# plt.plot(range_n_clusters, aic_list, marker='o')
+# plt.show()
 
 
 ###########################################################
-#define discretization function
+############     Discretization  ##########################
 ###########################################################
-print "Discretization starts"
-
-t0 = time.time()
-num_clusters = 5
+num_clusters = 15
 gmm = mixture.GaussianMixture(n_components=num_clusters)
 t0=time.time()
 gmm.fit(spline_coeff_raw)
@@ -153,131 +117,86 @@ labels = gmm.predict(spline_coeff_raw)
 imgplot = plt.imshow(labels.reshape(dx,dy))
 plt.show()
 means  = gmm.means_
-
 means_inv_PCA = eigenvector_matrix.T.dot(means.T)
 
 
-##############################################################
-#define pixel wise unary and pairwise potentials
-##############################################################
-print "Define unary and pairwise potentials"
-t0 = time.time()
+########################################################
+############## MRF graphical model######################
+########################################################
 n_labels_pixels = num_clusters
 n_pixels=dx*dy
 def fast_norm(x):
     return sqrt(x.dot(x.conj()))
 
-time_means = basis.dot(means_inv_PCA)
-t0 = time.time()
-print "Assigning pixel unaries starts"
 #define pixel unaries 
 pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
-for (i, l) in product(range(n_pixels), range(n_labels_pixels)):
-     pixel_unaries[i,l] = fast_norm(S1024_raw.T[:,i] - time_means[:,l])
+for i in range(n_pixels):
+    for l in range(n_labels_pixels):
+        pixel_unaries[i,l] = fast_norm(S1024_raw.T[:,i] - basis.dot(means_inv_PCA[:,l])) #L2 norm
      
-t1=time.time()
-print "Assigning pixel unaries took", t1-t0
 
 #define pixel regularizer
-pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=1.0/n_labels_pixels,truncate=None)			
-#define region adjacency graph and region wise potentials
-superpixelDiameter = 1                   # super-pixel size
-slicWeight = 1                           # SLIC color - spatial weight
-labels, n_segments = vigra.analysis.slicSuperpixels(image, slicWeight, superpixelDiameter) 
-labels = vigra.analysis.labelImage(labels) -1
-gridGraph = graphs.gridGraph(image.shape)
-rag = graphs.regionAdjacencyGraph(gridGraph, labels)
-nodeFeatures = rag.accumulateNodeFeatures(image)
-nodeFeatures = nodeFeatures.reshape(-1,1)
-nCluster   = 2
-g = mixture.GaussianMixture(n_components=nCluster)
-g.fit(nodeFeatures)
-clusterProb = g.predict_proba(nodeFeatures)
-probs = numpy.clip(clusterProb, 0.00001, 0.99999)
-#define superpixel_unaries
-superpixel_unaries = -1.0*numpy.log(probs)
-#define superpixel regularizer
-superpixel_regularizer = opengm.differenceFunction(shape=[nCluster,nCluster],norm=1,weight=1.0/nCluster,truncate=None)
-#define interlayer regularizer
-interlayer_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=1.0/n_labels_pixels,truncate=None)
+pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=1.0/n_labels_pixels,truncate=None)
 
-###############################################################
-#initialise and define graphical model
-###############################################################
-rag_edges = rag.uvIds()
-rag_edges = numpy.sort(rag_edges,axis=1)
-rag_edges += n_pixels
-
-n_variables = n_pixels + n_segments
-n_inter_edges = n_pixels
-n_pixel_edges = (dx-1)*dy + (dy-1)*dx
-n_segment_edges = rag_edges.shape[0]            #check this is right
-n_edges = n_pixel_edges + n_segment_edges + n_inter_edges
-
-print "Assigning unary and pairwise potentials to factor graph"
-t0 = time.time()
 #initialise graphical model
-gm = opengm.graphicalModel([n_labels_pixels]*n_pixels + [nCluster]*n_segments)
-gm.reserveFunctions(n_variables + 3,'explicit') # the unary functions plus the 3 types of regularizer
-gm.reserveFactors(n_variables + n_edges)
+gm = opengm.graphicalModel([n_labels_pixels]*n_pixels)
 
 #pixel wise unary factors
 fids = gm.addFunctions(pixel_unaries)
-gm.addFactors(fids,numpy.arange(n_pixels), finalize=False)
+gm.addFactors(fids,numpy.arange(n_pixels))
 
 #pixel wise pairwise factors
 fid = gm.addFunction(pixel_regularizer)
 vis = opengm.secondOrderGridVis(dx,dy)
-gm.addFactors(fid,vis, finalize=False)
+gm.addFactors(fid,vis)
 
-#superpixel wise unary factors
-fids = gm.addFunctions(superpixel_unaries)
-gm.addFactors(fids, n_pixels + numpy.arange(n_segments), finalize=False)
 
-#superpixel wise pairwise factors
-fid = gm.addFunction(superpixel_regularizer)
-gm.addFactors(fid, numpy.sort(rag_edges, axis=1), finalize=False)
-
-#inter layer pairwise factors
-fid = gm.addFunction(interlayer_regularizer)
-vis = numpy.dstack([numpy.arange(n_pixels).reshape(dx,dy), labels]).reshape((-1,2))
-vis[:,1] += n_pixels
-gm.addFactors(fid, vis, finalize=False)
-
-gm.finalize()
-t1 = time.time()
-print "Total time to assign potentials to graph", t1-t0, "secs"
-################################################################
-#Perform inference
-################################################################
-print "Inference started"
+########################################################
+############## Inference   #############################
+########################################################
 inf_trws=opengm.inference.TrwsExternal(gm, parameter=opengm.InfParam(steps=50))
 visitor=inf_trws.timingVisitor()
 t0=time.time()
 inf_trws.infer(visitor)
 t1=time.time()
-print "Inference took:", t1-t0
 argmin=inf_trws.arg()
 
-################################################################
-#extract superpixel node features and project to adjacency graph
-################################################################
-arg_pixels = argmin[0:n_pixels]
-arg_superpixels = argmin[n_pixels:]
-argImg = rag.projectNodeFeaturesToGridGraph(arg_superpixels.astype(numpy.uint32))
-
-t_end = time.time()
-print "Executing time of script", t_end - t_start, "secs"
-imgplot = plt.imshow(argImg)
+print "energy ",gm.evaluate(argmin)
+print "bound", inf_trws.bound()
+result=argmin.reshape(dx,dy)
+imgplot = plt.imshow(result)
+plt.title('TRWS')
+plt.show()
+centroid_labels = numpy.zeros((n_pixels,num_knots))
+centroid_labels = [means[i,:] for i in argmin]
+centroid_labels = numpy.asarray(centroid_labels)
+inv_pca_coeff = eigenvector_matrix.T.dot(centroid_labels.T)
+Y_hat_mrf = basis.dot(inv_pca_coeff)
+plt.imshow(Y_hat_mrf[0,:].reshape(dx,dy))
 plt.show()
 
-# argfinal = argImg.reshape(n_pixels)
-# centroid_labels = numpy.zeros((n_pixels,num_knots))
-# centroid_labels = [means[i,:] for i in argfinal]
-# centroid_labels = numpy.asarray(centroid_labels)
-# Y_hat_mrf = basis.dot(centroid_labels.T)
-# Sraw_mrf = Y_hat_mrf.T
+###########################################################
+############## Semiparametric regression   ################
+###########################################################
+pPenalty = "Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat"
+pData = "sep_1072240.mat"
+f = h5py.File(pData, "r")
+S = f["img"].value
+S = S.reshape((S.shape[0], -1))
+T = f["T"].value
 
+f_P = h5py.File(pPenalty, "r")
+P = f_P["BPdir2"].value
+B = f_P["B"].value
+S = S[0:1024,] 
+T = T[0:1024,]
+Y_hat_mrf = Y_hat_mrf[0:1024,]
 
-
-
+X = ap.computeGaussianActivityPattern(numpy.squeeze(T)).transpose();
+Z = tai.semiparamRegression(S-Y_hat_mrf,X,B,P);
+del S;
+del T;
+plt.imshow(numpy.reshape(Z,[640, 480]).transpose())
+plt.show()
+h5f = h5py.File('Z.h5', 'w')
+h5f.create_dataset('dataset_1', data=Z)
