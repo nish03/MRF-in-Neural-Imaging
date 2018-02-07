@@ -1,5 +1,4 @@
 import ActivityPatterns as ap
-import Spline
 import numpy as np
 import h5py
 import scipy.linalg as linalg
@@ -20,13 +19,12 @@ def semiparamRegression(S, X, B, P):
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
     [noNonparametricComponents, noTimepoints] = B.shape
 
+    # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
-    #E2 = np.eye(noNonparametricComponents)
     S_P = linalg.block_diag(E1,P)
+    Pterm = S_P.transpose().dot(S_P)
 
-    #P = blkdiag(zeros(noFixedEffects,noFixedEffects),P);
-    Pterm = S_P.transpose().dot(S_P);
-
+    # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
     GtG = G.transpose().dot(G)
     AIC = np.zeros([len(lambdas),noPixels])
@@ -43,14 +41,17 @@ def semiparamRegression(S, X, B, P):
         eGlobal = S - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
         df = np.trace(GTGpDsG.dot(G));
+        # covA = (GtGpD)^-1 * GtGpD * (GtGpD)^-1
         covA_1 = linalg.solve(GtGpD,GtG)
         covA = linalg.solve(GtGpD.transpose(),covA_1.transpose()).transpose()
-        s_square = RSS / (noTimepoints-df-1);
-        z_i = beta[0,:] / np.sqrt(s_square * covA[0,0])
+        # covariance matrix of our components
+        s_square = RSS / (noTimepoints-df-1)
+        # Z-value of our parametric component
+        #z_i = beta[0,:] / np.sqrt(s_square * covA[0,0])
+        Z[i,] = beta[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
-        Z[i,] = z_i
 
     minAICcIdx = np.argmin(AIC,axis=0)
     Z = Z.transpose()
