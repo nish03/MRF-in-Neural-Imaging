@@ -26,9 +26,9 @@ import ActivityPatterns as ap
 ###########################################################
 #####################load   data##########################
 ###########################################################
-f = h5py.File("sep_1072240.mat", "r")
-S1024_raw = numpy.array(f["img"].value)
-dy,dx,dt  = S1024_raw.T.shape
+f = h5py.File("626510_sep.mat", "r")
+S1024_raw = numpy.array(f["S1024"].value)
+dt, nopixels  = S1024_raw.shape
 S1024_raw =  S1024_raw.reshape((S1024_raw.shape[0], -1))
 f.close()
 S1024_raw = S1024_raw.T
@@ -84,7 +84,7 @@ spline_coeff_raw = numpy.linalg.solve(numpy.dot(basis.T,basis)+lambda_param*nump
 ###########################################################
 pca = PCA(n_components=num_knots)
 pca.fit(spline_coeff_raw.T)
-var1= numpy.cumsum(numpy.round(pca.explained_variance_ratio_, decimals=4)*100)
+var1= numpy.cumsum(numpy.round(pca.explained_variance_ratio_, decimals=2)*100)
 components = numpy.argmax(numpy.unique(var1)) + 1
 pca = PCA(n_components=components)
 pca.fit(spline_coeff_raw.T)
@@ -94,27 +94,28 @@ spline_coeff_raw = spline_coeff_raw.T.dot(eigenvector_matrix.T)
 ###########################################################
 ############Determining number of clusters  ###############
 ###########################################################
-# range_n_clusters = range(1, 50)
+# range_n_clusters = range(1, 80)
 # aic_list = []
 # for n_clusters in range_n_clusters:
-     # model = mixture.GaussianMixture(n_components=n_clusters, init_params='kmeans')
-     # model.fit(spline_coeff_raw)
-     # aic]list.append(model.aic(spline_coeff_raw))
+      # model = mixture.GaussianMixture(n_components=n_clusters, init_params='kmeans')
+      # model.fit(spline_coeff_raw)
+      # aic_list.append(model.aic(spline_coeff_raw))
+	  
 # plt.plot(range_n_clusters, aic_list, marker='o')
 # plt.show()
 
 
 ###########################################################
-############     Discretization  ##########################
+############   Discretization    ##########################
 ###########################################################
-num_clusters = 15
+num_clusters = 10
 gmm = mixture.GaussianMixture(n_components=num_clusters)
 t0=time.time()
 gmm.fit(spline_coeff_raw)
 t1=time.time()
 print "Time taken for discretization of raw data is: ", t1-t0
 labels = gmm.predict(spline_coeff_raw)
-imgplot = plt.imshow(labels.reshape(dx,dy))
+imgplot = plt.imshow(labels.reshape(640,480).transpose())
 plt.show()
 means  = gmm.means_
 means_inv_PCA = eigenvector_matrix.T.dot(means.T)
@@ -124,7 +125,7 @@ means_inv_PCA = eigenvector_matrix.T.dot(means.T)
 ############## MRF graphical model######################
 ########################################################
 n_labels_pixels = num_clusters
-n_pixels=dx*dy
+n_pixels=nopixels
 def fast_norm(x):
     return sqrt(x.dot(x.conj()))
 
@@ -147,7 +148,7 @@ gm.addFactors(fids,numpy.arange(n_pixels))
 
 #pixel wise pairwise factors
 fid = gm.addFunction(pixel_regularizer)
-vis = opengm.secondOrderGridVis(dx,dy)
+vis = opengm.secondOrderGridVis(640,480)
 gm.addFactors(fid,vis)
 
 
@@ -163,7 +164,7 @@ argmin=inf_trws.arg()
 
 print "energy ",gm.evaluate(argmin)
 print "bound", inf_trws.bound()
-result=argmin.reshape(dx,dy)
+result=argmin.reshape(640,480).transpose()
 imgplot = plt.imshow(result)
 plt.title('TRWS')
 plt.show()
@@ -172,31 +173,35 @@ centroid_labels = [means[i,:] for i in argmin]
 centroid_labels = numpy.asarray(centroid_labels)
 inv_pca_coeff = eigenvector_matrix.T.dot(centroid_labels.T)
 Y_hat_mrf = basis.dot(inv_pca_coeff)
-plt.imshow(Y_hat_mrf[0,:].reshape(dx,dy))
+plt.imshow(Y_hat_mrf[0,:].reshape(640,480).transpose())
 plt.show()
 
 ###########################################################
 ############## Semiparametric regression   ################
 ###########################################################
+
 pPenalty = "Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat"
-pData = "sep_1072240.mat"
+pData = "626510_sep.mat"
+
 f = h5py.File(pData, "r")
-S = f["img"].value
-S = S.reshape((S.shape[0], -1))
-T = f["T"].value
-
+S = f["S1024"].value
+T = f["T1024"].value
 f_P = h5py.File(pPenalty, "r")
-P = f_P["BPdir2"].value
-B = f_P["B"].value
-S = S[0:1024,] 
-T = T[0:1024,]
+P = f_P["BPdir2"].value   # learned penalty matrix
+print('[INFO] P is being transposed\n')
+P = P.transpose() # P appears to be stored as transposed version of itself
+B = f_P["B"].value        # basis matrix
+S2 = S[0:1024,]
+T2 = T[0:1024,]
 Y_hat_mrf = Y_hat_mrf[0:1024,]
-
-X = ap.computeGaussianActivityPattern(numpy.squeeze(T)).transpose();
-Z = tai.semiparamRegression(S-Y_hat_mrf,X,B,P);
 del S;
 del T;
-plt.imshow(numpy.reshape(Z,[640, 480]).transpose())
+
+X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
+Z = tai.semiparamRegression(S2-Y_hat_mrf,X,B,P);
+
+plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
-h5f = h5py.File('Z.h5', 'w')
-h5f.create_dataset('dataset_1', data=Z)
+
+with h5py.File("Z_10_Clust.h5","w") as f:
+  d1 = f.create_dataset('Z',data=Z)
