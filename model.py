@@ -198,10 +198,29 @@ del S;
 del T;
 
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-Z = tai.semiparamRegression(Y_hat_mrf - S2,X,B,P);
+Z = tai.semiparamRegression(S2 - Y_hat_mrf, X, B, P);
 
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
 with h5py.File("Z_10_Clust.h5","w") as f:
   d1 = f.create_dataset('Z',data=Z)
+
+
+#######################################################################
+######################Evaluation#######################################
+#######################################################################
+groundtruthImg = numpy.array(f["groundtruthImg"].value)
+groundtruth_foreground = numpy.where(groundtruthImg > 0)[0]
+groundtruth_background = numpy.where(groundtruthImg == 0)[0]
+
+true_positive =  len(numpy.where(abs(Z[groundtruth_foreground,]) >= 5.2)[0])                                  
+false_positive = len(numpy.where(abs(Z[groundtruth_foreground,]) < 5.2)[0])
+
+true_negative = len(numpy.where(abs(Z[groundtruth_background,]) < 5.2)[0])
+false_negative = len(numpy.where(abs(Z[groundtruth_background,]) >= 5.2)[0])
+
+
+true_positive_rate = true_positive / numpy.float32(len(groundtruth_foreground))
+false_positive_rate = false_positive / numpy.float32(len(groundtruth_background))
+accuracy  = (true_positive + true_negative) / numpy.float32(len(groundtruth_background) + len(groundtruth_foreground))
