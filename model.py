@@ -198,7 +198,7 @@ del S;
 del T;
 
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-Z = tai.semiparamRegression(S2-Y_hat_mrf,X,B,P);
+Z = tai.semiparamRegression(Y_hat_mrf - S2,X,B,P);
 
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
