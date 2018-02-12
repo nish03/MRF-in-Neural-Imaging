@@ -3,42 +3,43 @@ import numpy as np
 import h5py
 import scipy.linalg as linalg
 import matplotlib.pyplot as plt
+import pixel_mrf_model as pm
 
-def semiparamRegression(S, X, B, P):
+def semiparamRegression(S2, X, B, B2, P, P2, noPixels, num_knots):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
     B: non parametric basis
     P: penalty matrix of non-parametric basis
     """
-    m = np.mean(S,axis=0)
-    S = S - m
-    [noTimepoints,noPixels] = S.shape
-    G = np.concatenate([X, B]).transpose();
+    m = np.mean(S2,axis=0)
+    S2 = S2 - m
+    G = np.concatenate([X, B, B2]).transpose();
     [noFixedComponents, noTimepoints] = X.shape
+    [nonParamComponents,noTimepoints] = B.shape
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
-    [noNonparametricComponents, noTimepoints] = B.shape
-
     # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
-    S_P = linalg.block_diag(E1,P)
+    S_P = linalg.block_diag(E1,P,P2)
     Pterm = S_P.transpose().dot(S_P)
-
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
     GtG = G.transpose().dot(G)
     AIC = np.zeros([len(lambdas),noPixels])
     Z = np.zeros([len(lambdas),noPixels])
-
     for i in range(0,len(lambdas)):
         # fit model using penalised normal equations
         lambda_i = lambdas[i]
         GtGpD = GtG + lambda_i * Pterm;
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
-        beta = GTGpDsG.dot(S)
+        beta = GTGpDsG.dot(S2)
+        #start MRF regularization
+        beta_mrf = beta[noFixedComponents+nonParamComponents :]   #beta_mrf_before_regularization
+        beta_mrf = pm.pixel_mrf_model(num_knots,beta_mrf,S2,B2,noPixels) #beta_mrf_after_regularization
+        beta = np.concatenate([beta[0:noFixedComponents + nonParamComponents,:], beta_mrf])
         # compute model statistics
         seqF = G.dot(beta)
-        eGlobal = S - seqF
+        eGlobal = S2 - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
         df = np.trace(GTGpDsG.dot(G));
         # covA = (GtGpD)^-1 * GtGpD * (GtGpD)^-1
@@ -58,3 +59,4 @@ def semiparamRegression(S, X, B, P):
     Z_minAIC = Z[np.arange(Z.shape[0]), minAICcIdx]
 
     return Z_minAIC
+						
