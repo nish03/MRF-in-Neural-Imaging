@@ -49,8 +49,8 @@ true_positive =  len(numpy.where(abs(Z[groundtruth_foreground,]) >= 5.2)[0])
 false_positive = len(numpy.where(abs(Z[groundtruth_foreground,]) < 5.2)[0])
 true_negative = len(numpy.where(abs(Z[groundtruth_background,]) < 5.2)[0])
 false_negative = len(numpy.where(abs(Z[groundtruth_background,]) >= 5.2)[0])
-true_positive_rate = true_positive / numpy.float32(true_positive + false_negative)
-false_positive_rate = false_positive / numpy.float32(false_positive + true_negative)
+true_positive_rate = true_positive / numpy.float32(len(groundtruth_foreground))
+false_positive_rate = false_positive / numpy.float32(len(groundtruth_background))
 accuracy  = (true_positive + true_negative) / numpy.float32(len(groundtruth_background) + len(groundtruth_foreground))
   
 #post processing region_mrf_model
