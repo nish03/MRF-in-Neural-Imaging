@@ -3,12 +3,12 @@ from sklearn.decomposition import PCA
 from math import sqrt
 from sklearn import mixture
 import opengm
-from sklearn.preprocessing import StandardScaler
+
 
 def fast_norm(x):
     return sqrt(x.dot(x.conj()))
 
-def pixel_mrf_model(num_knots,beta,S2,B,noPixels):
+def pixel_mrf_model(num_knots,num_clusters,beta,S2,B,noPixels):
     #taking principal components   
     pca = PCA(n_components=num_knots)
     pca.fit(beta.T)
@@ -19,8 +19,7 @@ def pixel_mrf_model(num_knots,beta,S2,B,noPixels):
     eigenvector_matrix = pca.components_
     beta = beta.T.dot(eigenvector_matrix.T)
     #discretization
-    num_clusters = 5
-    gmm = mixture.GaussianMixture(n_components=num_clusters)
+    gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'spherical')
     gmm.fit(beta)
     means  = gmm.means_
     #means for mrf
