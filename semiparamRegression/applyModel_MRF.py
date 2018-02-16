@@ -29,9 +29,10 @@ noTimepoints, noPixels = S2.shape
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
 num_knots = P.shape[0]
+num_clusters = 10
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, P, num_knots, noPixels)
+Z = tai.semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
@@ -52,7 +53,6 @@ Z_region = rm.region_mrf_model(Z)
 Z_region = numpy.reshape(Z,[noPixels,])
 plt.imshow(Z_region.reshape(640,480).transpose())
 plt.show()
-
 
 with h5py.File("Z_Final.h5","w") as f:
     d1 = f.create_dataset('Z_region',data=Z_region)
