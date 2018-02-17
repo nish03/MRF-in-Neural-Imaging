@@ -4,23 +4,23 @@ from math import sqrt
 from sklearn import mixture
 import opengm
 
-
 def fast_norm(x):
     return sqrt(x.dot(x.conj()))
 
-def pixel_mrf_model(num_knots,num_clusters,beta,S2,B,noPixels):
-    #taking principal components   
+def pixel_mrf_model(num_knots,num_clusters,beta_mrf,S2,B2,noPixels):
+    #taking principal components
     pca = PCA(n_components=num_knots)
-    pca.fit(beta.T)
+    pca.fit(beta_mrf.T)
     var1= numpy.cumsum(numpy.round(pca.explained_variance_ratio_, decimals=3)*100)
     components = numpy.argmax(numpy.unique(var1)) + 1
     pca = PCA(n_components=components)
-    pca.fit(beta.T)
+    pca.fit(beta_mrf.T)
     eigenvector_matrix = pca.components_
-    beta = beta.T.dot(eigenvector_matrix.T)
+    beta_mrf = beta_mrf.T.dot(eigenvector_matrix.T)
     #discretization
-    gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'spherical')
-    gmm.fit(beta)
+    gmm = mixture.GaussianMixture(n_components=num_clusters, covariance_type = 'spherical')
+    gmm.fit(beta_mrf)
+    labels = gmm.predict(beta_mrf)
     means  = gmm.means_
     #means for mrf
     means_inv_PCA = eigenvector_matrix.T.dot(means.T)
@@ -30,7 +30,7 @@ def pixel_mrf_model(num_knots,num_clusters,beta,S2,B,noPixels):
     pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
     for i in range(n_pixels):
         for l in range(n_labels_pixels):
-            pixel_unaries[i,l] = fast_norm(S2[:,i] - B.T.dot(means_inv_PCA[:,l])) #L2 norm
+            pixel_unaries[i,l] = fast_norm(S2[:,i] - B2.T.dot(means_inv_PCA[:,l])) #L2 norm
     #define pixel regularizer
     pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=1.0/n_labels_pixels,truncate=None)
     #initialise graphical model
@@ -52,5 +52,5 @@ def pixel_mrf_model(num_knots,num_clusters,beta,S2,B,noPixels):
     centroid_labels = [means[i,:] for i in argmin]
     centroid_labels = numpy.asarray(centroid_labels)
     #inverse PCA
-    beta = eigenvector_matrix.T.dot(centroid_labels.T)
-    return beta
+    beta_mrf = eigenvector_matrix.T.dot(centroid_labels.T)
+    return beta_mrf
