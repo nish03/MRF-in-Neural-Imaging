@@ -5,7 +5,7 @@ import scipy.linalg as linalg
 import matplotlib.pyplot as plt
 import pixel_mrf_model as pm
 
-def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
+def semiparamRegression(S2, X, B, B2, P, P2, noPixels,num_clusters, num_knots):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -14,13 +14,13 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
     """
     m = np.mean(S2,axis=0)
     S2 = S2 - m
-    G = np.concatenate([X, B]).transpose();
+    G = np.concatenate([X, B, B2]).transpose();
     [noFixedComponents, noTimepoints] = X.shape
     [nonParamComponents,noTimepoints] = B.shape
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
     # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
-    S_P = linalg.block_diag(E1,P)
+    S_P = linalg.block_diag(E1,P,P2)
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
@@ -33,11 +33,10 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         GtGpD = GtG + lambda_i * Pterm;
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
         beta = GTGpDsG.dot(S2)
-        beta_mrf = beta[noFixedComponents:]
-        # MRF regularization
-        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta_mrf,S2,B,noPixels) 
-        #beta after regulariation
-        beta = np.concatenate([beta[0:noFixedComponents,:], beta_mrf])
+        #start MRF regularization
+        beta_mrf = beta[noFixedComponents+nonParamComponents :]                       #beta_mrf_before_regularization
+        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta_mrf,S2,B2,noPixels) #beta_mrf_after_regularization
+        beta = np.concatenate([beta[0:noFixedComponents + nonParamComponents,:], beta_mrf])
         # compute model statistics
         seqF = G.dot(beta)
         eGlobal = S2 - seqF
