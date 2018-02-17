@@ -1,4 +1,5 @@
 #import packages
+#import packages
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -13,10 +14,10 @@ import ThermalImagingAnalysis as tai
 
 
 # Data, parametric and non-parametric components 
-f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
+f = h5py.File("626510_sep.mat", "r")
 S = numpy.array(f["S1024"].value)
 T = numpy.array(f["T1024"].value)
-f_P = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat", "r")
+f_P = h5py.File("Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat", "r")
 P = f_P["BPdir2"].value        # learned penalty matrix
 P = P.transpose()              # P appears to be stored as transposed version of itself
 B = f_P["B"].value             # basis matrix 
@@ -28,11 +29,19 @@ noTimepoints, noPixels = S2.shape
 
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-num_knots = P.shape[0]
+
+#compute basis matrix and penalty matrix for MRF Regularization
+num_knots = 80
 num_clusters = 10
+B2 = bm.basis_mrf(num_knots,noTimepoints);
+D = numpy.identity(B2.shape[0])
+D_k = numpy.diff(D,n=1,axis=-1)  
+P2 = numpy.dot(D_k,D_k.T)
+
+
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels)
+Z = tai.semiparamRegression(S2, X, B, B2, P, P2, noPixels,num_clusters, num_knots)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
@@ -47,12 +56,3 @@ false_negative = len(numpy.where(abs(Z[groundtruth_background,]) >= 5.2)[0])
 true_positive_rate = true_positive / numpy.float32(len(groundtruth_foreground))
 false_positive_rate = false_positive / numpy.float32(len(groundtruth_background))
 accuracy  = (true_positive + true_negative) / numpy.float32(len(groundtruth_background) + len(groundtruth_foreground))
-  
-#post processing region_mrf_model
-Z_region = rm.region_mrf_model(Z)
-Z_region = numpy.reshape(Z,[noPixels,])
-plt.imshow(Z_region.reshape(640,480).transpose())
-plt.show()
-
-with h5py.File("Z_Final.h5","w") as f:
-    d1 = f.create_dataset('Z_region',data=Z_region)
