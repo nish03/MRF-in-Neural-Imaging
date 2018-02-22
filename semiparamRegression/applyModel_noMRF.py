@@ -29,7 +29,7 @@ del S;
 del T;
 
 X = ap.computeGaussianActivityPattern(np.squeeze(T2)).transpose();
-Z = tai.semiparamRegression(S2,X,B,P);
+Z = tai.semiparamRegressionRaw(S2,X,B,P);
 
 with h5py.File("result.h5","w") as f:
   d1 = f.create_dataset('Z',data=Z)
