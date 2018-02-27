@@ -1,5 +1,4 @@
 #import packages
-#import packages
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -14,10 +13,10 @@ import ThermalImagingAnalysis as tai
 
 
 # Data, parametric and non-parametric components 
-f = h5py.File("626510_sep.mat", "r")
+f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
 S = numpy.array(f["S1024"].value)
 T = numpy.array(f["T1024"].value)
-f_P = h5py.File("Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat", "r")
+f_P = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat", "r")
 P = f_P["BPdir2"].value        # learned penalty matrix
 P = P.transpose()              # P appears to be stored as transposed version of itself
 B = f_P["B"].value             # basis matrix 
@@ -29,19 +28,12 @@ noTimepoints, noPixels = S2.shape
 
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-
-#compute basis matrix and penalty matrix for MRF Regularization
-num_knots = 80
+num_knots = P.shape[0]
 num_clusters = 10
-B2 = bm.basis_mrf(num_knots,noTimepoints);
-D = numpy.identity(B2.shape[0])
-D_k = numpy.diff(D,n=1,axis=-1)  
-P2 = numpy.dot(D_k,D_k.T)
-
-
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, B2, P, P2, noPixels,num_clusters, num_knots)
+Z = tai.semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels)
+Z = abs(Z)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
