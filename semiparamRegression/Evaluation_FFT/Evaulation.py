@@ -50,36 +50,36 @@ print "%.2f%% of the energy is contained in the first %d spectral components\n",
 #smooth our raw data and compute statistics
 ##########################################################
 S_raw_mrf = em.evaluation_fft_mrf(num_knots,num_clusters, S_raw,B,P, noPixels, lambdas)
-#fft analysis of signal data
+#fft analysis of raw data
 Y_raw = abs(numpy.fft.fft(S_raw))
 Y_raw_mrf = abs(numpy.fft.fft(S_raw_mrf))
 
 #energies
-energyAtTargetSite_raw = sum(sum(Yraw[posIdx,1:])) / len(posIdx)
-energyAtTargetSite_raw_mrf = sum(sum(Yraw_mrf[posIdx,1:])) / len(posIdx)
-energyAtTargetSite_raw_rel = sum(sum(Yraw[posIdx,1:relevantSpectralComponents])) / len(posIdx)
-energyAtTargetSite_raw_mrf_rel = sum(sum(Yraw_mrf[posIdx,1:relevantSpectralComponents])) / len(posIdx)
+energyAtTargetSite_raw = sum(sum(Y_raw[:,posIdx])) / len(posIdx)
+energyAtTargetSite_raw_mrf = sum(sum(Y_raw_mrf[:,posIdx])) / len(posIdx)
+energyAtTargetSite_raw_rel = sum(sum(Y_raw[0:relevantSpectralComponents,posIdx])) / len(posIdx)
+energyAtTargetSite_raw_mrf_rel = sum(sum(Y_raw_mrf[0:relevantSpectralComponents,posIdx])) / len(posIdx)
 
-print "-> RAW: FFT Analysis at target site:  Y_raw Y_raw_mrf", energyAtTargetSite_raw, energyAtTargetSite_raw_mrf
-print "-> RAW: FFT Analysis at target site of relevant spectral components: Y_raw Y_raw_mrf", energyAtTargetSite_raw_rel, energyAtTargetSite_raw_mrf_rel
+print "-> RAW: FFT Analysis of raw data:  Y_raw Y_raw_mrf", energyAtTargetSite_raw, energyAtTargetSite_raw_mrf
+print "-> RAW: FFT Analysis of raw data at relevant spectral components: Y_raw Y_raw_mrf", energyAtTargetSite_raw_rel, energyAtTargetSite_raw_mrf_rel
 
 ########################################################################
 #smooth the data being superimposed by our target and compute statistics
 ########################################################################
 print "Data with Target Signal" 
-S_signal_MRF = pm.pixel_mrf_model(num_knots,num_clusters, S_signal,B,P, noPixels, lambdas)
+S_signal_MRF = em.evaluation_fft_mrf(num_knots, num_clusters, S_signal, B, P, noPixels, lambdas)
 #fft analysis of signal data
 Y_signal = abs(numpy.fft.fft(S_signal))  #fft and take absolute values
 Y_signal_mrf = abs(numpy.fft.fft(S_signal_MRF))   #fft and take absolute values
 
 #energies
-energyAtTargetSite = sum(sum(Y_signal[posIdx,1:])) / len(posIdx)
-energyAtTargetSite_rel = sum(sum(Y_signal[posIdx,1:relevantSpectralComponents])) / len(posIdx)
-energyAtTargetSite_mrf = sum(sum(Y_signal_mrf[posIdx,1:])) / len(posIdx)
-energyAtTargetSite_mrf_rel = sum(sum(Y_signal_mrf[posIdx,1:relevantSpectralComponents])) / len(posIdx)
+energyAtTargetSite = sum(sum(Y_signal[:,posIdx])) / len(posIdx)
+energyAtTargetSite_mrf = sum(sum(Y_signal_mrf[:,posIdx])) / len(posIdx)
+energyAtTargetSite_rel = sum(sum(Y_signal[0:relevantSpectralComponents,posIdx])) / len(posIdx)
+energyAtTargetSite_mrf_rel = sum(sum(Y_signal_mrf[0:relevantSpectralComponents,posIdx])) / len(posIdx)
 
-print "-> TARGET: FFT Analysis at target site: Y_signal,  Y_signal_mrf", energyAtTargetSite, energyAtTargetSite_mrf
-print "-> TARGET: FFT Analysis at target site of selected spectral components: Y_signal, Y_signal_mrf" , energyAtTargetSite_rel,  energyAtTargetSite_mrf_rel
+print "-> TARGET: FFT Analysis of signal data: Y_signal,  Y_signal_mrf", energyAtTargetSite, energyAtTargetSite_mrf
+print "-> TARGET: FFT Analysis of signal data at selected spectral components: Y_signal, Y_signal_mrf" , energyAtTargetSite_rel,  energyAtTargetSite_mrf_rel
 
 
 
@@ -87,12 +87,13 @@ print "-> TARGET: FFT Analysis at target site of selected spectral components: Y
 #sum of squares
 ######################################################################
 print "Sum of Squares:"
-ss_raw = sum(sum( (S_raw[posIdx,:] - S_signal[posIdx,:])**2 )) / len(posIdx)
-ss_mrf = sum(sum( (S_raw_mrf[posIdx,:] - S_signal_mrf[posIdx,:])**2 )) / len(posIdx)
+ss_raw = sum(sum( (S_raw[:,posIdx] - S_signal[:,posIdx])**2 )) / len(posIdx)
+ss_mrf = sum(sum( (S_raw_mrf[:,posIdx] - S_signal_mrf[:,posIdx])**2 )) / len(posIdx)
 print "S_raw - S_signal:", ss_raw
 print "S_raw_mrf - S_signal_mrf:", ss_mrf  
 
-print "The last SS value should approach zero if the estimate match, otherwise the mrf model absorbed some energy of our target signal"
+print "The last value should approach zero if the estimate match, otherwise the mrf model absorbed some energy of our target signal"
+
 
 
 
