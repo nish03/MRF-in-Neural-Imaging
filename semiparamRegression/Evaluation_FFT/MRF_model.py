@@ -46,5 +46,5 @@ def evaluation_fft_mrf(num_knots,num_clusters, S,B,P, noPixels, lambdas):
     centroid_labels = [means[i,:] for i in argmin]
     centroid_labels = numpy.asarray(centroid_labels)
     beta = eigenvector_matrix.T.dot(centroid_labels.T)
-    Y_mrf = B.dot(beta)
+    Y_mrf = B.transpose().dot(beta)
     return Y_mrf
