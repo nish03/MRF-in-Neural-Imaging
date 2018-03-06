@@ -33,13 +33,14 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         GtGpD = GtG + lambda_i * Pterm;
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
         beta = GTGpDsG.dot(S2)
-        beta_nonparam = beta[noFixedComponents:]
         # MRF regularization
-        beta_nonparam = pm.pixel_mrf_model(num_knots,num_clusters,beta_nonparam,S2,B,noPixels) 
+        beta= pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
+        #new X or parametric component will be added here in next change
         XtX = X.transpose().dot(X)
         XtXinvXt = linalg.lstsq(XtX, X.transpose())[0]   #linalg.lstsq since X is a singular matrix
-        alpha_param = XtXinvXt.transpose().dot(S2 - B.T.dot(beta_nonparam))
-        beta = np.concatenate([alpha_param, beta_nonparam])
+        alpha_param = XtXinvXt.transpose().dot(S2 - B.T.dot(beta[1:,]))
+        beta = np.concatenate([alpha_param, beta[1:,]])
+        G = np.concatenate([X, B]).transpose()
         # compute model statistics
         seqF = G.dot(beta)
         eGlobal = S2 - seqF
