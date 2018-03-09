@@ -1,22 +1,14 @@
 import numpy
-from sklearn.decomposition import PCA
+from math import sqrt
 from sklearn import mixture
 import opengm
 
+
 def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels): 
-    pca = PCA(n_components=num_knots)
-    pca.fit(beta.T)
-    var1= numpy.cumsum(numpy.round(pca.explained_variance_ratio_, decimals=3)*100)
-    components = numpy.argmax(numpy.unique(var1)) + 1
-    pca = PCA(n_components=components)
-    pca.fit(beta.T)
-    eigenvector_matrix = pca.components_
-    beta = beta.T.dot(eigenvector_matrix.T)
     gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'diag')
-    gmm.fit(beta)
+    gmm.fit(beta.T)
     means  = gmm.means_
-    means_inv_PCA = eigenvector_matrix.T.dot(means.T)
-    GtM = G.T.dot(means_inv_PCA)
+    GtM = G.dot(means.T)
     n_labels_pixels = num_clusters
     n_pixels=noPixels 
     pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
@@ -37,5 +29,5 @@ def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels):
     centroid_labels = numpy.zeros((n_pixels,num_knots))
     centroid_labels = [means[i,:] for i in argmin]
     centroid_labels = numpy.asarray(centroid_labels)
-    beta = eigenvector_matrix.T.dot(centroid_labels.T)
+    beta = centroid_labels.T
     return beta
