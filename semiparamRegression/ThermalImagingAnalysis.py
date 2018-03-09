@@ -16,7 +16,6 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
     S2 = S2 - m
     G = np.concatenate([X, B]).transpose();
     [noFixedComponents, noTimepoints] = X.shape
-    [nonParamComponents,noTimepoints] = B.shape
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
     # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
@@ -33,16 +32,12 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         GtGpD = GtG + lambda_i * Pterm;
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
         beta = GTGpDsG.dot(S2)
-        # MRF regularization
-        beta= pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
-        #new X or parametric component will be added here in next change
-        XtX = X.transpose().dot(X)
-        XtXinvXt = linalg.lstsq(XtX, X.transpose())[0]   #linalg.lstsq since X is a singular matrix
-        alpha_param = XtXinvXt.transpose().dot(S2 - B.T.dot(beta[1:,]))
-        beta = np.concatenate([alpha_param, beta[1:,]])
-        G = np.concatenate([X, B]).transpose()
-        # compute model statistics
         seqF = G.dot(beta)
+        # MRF regularization
+        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
+        Y_hat = G.dot(beta_mrf)
+        beta_mrf = GTGpDsG.dot(S2 - Y_hat)
+        # compute model statistics
         eGlobal = S2 - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
         df = np.trace(GTGpDsG.dot(G));
@@ -51,7 +46,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         # covariance matrix of our components
         s_square = RSS / (noTimepoints-df-1)
         # Z-value of our parametric component
-        Z[i,] = beta[0,:] / np.sqrt(s_square * covA[0,0])
+        Z[i,] = beta_mrf[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
