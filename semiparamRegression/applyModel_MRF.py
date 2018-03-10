@@ -11,6 +11,7 @@ import pixel_mrf_model as pm
 import region_mrf_model as rm
 import ThermalImagingAnalysis as tai
 import scipy.io
+from sklearn.metrics import f1_score
 
 
 # Data, parametric and non-parametric components 
@@ -56,3 +57,18 @@ true_positive_rate = true_positive / numpy.float32(len(groundtruth_foreground))
 false_positive_rate = false_positive / numpy.float32(len(groundtruth_background))
 accuracy  = (true_positive + true_negative) / numpy.float32(len(groundtruth_background) + len(groundtruth_foreground))
   
+Z_true = groundtruthImg.flatten()
+for i in range(len(Z_true)):
+    if Z_true[i] != 0:
+       Z_true[i] = 1
+    else:
+       Z_true[i] = 0
+
+Z_pred = numpy.zeros(len(Z_true))
+for i in range(len(Z_pred)):
+    if Z[i] >= 5.2:
+       Z_pred[i] = 1
+    else:
+       Z_pred[i] = 0
+    
+F1 = f1_score(Z_true, Z_pred, average='binary')
