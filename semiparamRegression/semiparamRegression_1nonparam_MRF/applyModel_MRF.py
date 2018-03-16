@@ -7,7 +7,6 @@ import time
 import h5py
 import ActivityPatterns as ap
 import pixel_mrf_model as pm
-import region_mrf_model as rm
 import ThermalImagingAnalysis as tai
 import scipy.io
 
