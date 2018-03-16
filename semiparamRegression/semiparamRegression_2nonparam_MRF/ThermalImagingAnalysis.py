@@ -19,7 +19,6 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
     # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
-    E2 = 0 * np.eye(nonParamComponents)
     S_P = linalg.block_diag(E1, P2, P)
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
