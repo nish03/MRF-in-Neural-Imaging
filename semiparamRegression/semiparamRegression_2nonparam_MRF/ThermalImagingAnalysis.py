@@ -34,14 +34,10 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         beta = GTGpDsG.dot(S2)
         # MRF regularization
         beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
-        beta_nonparam = beta_mrf[noFixedComponents:]
-        Y_hat = B.transpose().dot(beta_nonparam)
-        XtX = X.transpose().dot(X)
-        XtXinvXt = linalg.lstsq(XtX, X.transpose())[0]
-        alpha_refit = XtXinvXt.transpose().dot(S2 - Y_hat)
-        beta_fit = np.concatenate([alpha_refit, beta_nonparam])
+        Y_hat = G.dot(beta_mrf)
+        beta_refit = GTGpDsG.dot(S2 - Y_hat)
         # compute model statistics
-        seqF = G.dot(beta_fit)
+        seqF = G.dot(beta_refit)
         eGlobal = S2 - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
         df = np.trace(GTGpDsG.dot(G));
@@ -50,7 +46,7 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         # covariance matrix of our components
         s_square = RSS / (noTimepoints-df-1)
         # Z-value of our parametric component
-        Z[i,] = alpha_refit / np.sqrt(s_square * covA[0,0])
+        Z[i,] = beta_refit[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
