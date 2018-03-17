@@ -16,6 +16,7 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
     S2 = S2 - m
     G = np.concatenate([X, B2, B]).transpose();
     [noFixedComponents, noTimepoints] = X.shape
+    [noParamComponents, noTimepoints] = B2.shape
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
     # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
@@ -33,7 +34,8 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
         beta = GTGpDsG.dot(S2)
         # MRF regularization
-        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
+        beta_mrf = beta[noFixedComponents + noParamComponents:]
+        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta_mrf,S2,G,noPixels) 
         Y_hat = G.dot(beta_mrf)
         beta_refit = GTGpDsG.dot(S2 - Y_hat)
         # compute model statistics
