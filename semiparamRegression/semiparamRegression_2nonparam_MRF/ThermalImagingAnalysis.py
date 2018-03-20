@@ -14,13 +14,12 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
     """
     m = np.mean(S2,axis=0)
     S2 = S2 - m
-    G = np.concatenate([X, B2, B]).transpose();
+    G = np.concatenate([X, B, B2]).transpose();
     [noFixedComponents, noTimepoints] = X.shape
-    [noParamComponents, noTimepoints] = B2.shape
     assert (noFixedComponents == 1), "The hypothesis test only works for a single parametric component."
     # compute Penalty term
     E1 = 0 * np.eye(noFixedComponents)
-    S_P = linalg.block_diag(E1, P2, P)
+    S_P = linalg.block_diag(E1, P, P2)
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
@@ -35,9 +34,13 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         beta = GTGpDsG.dot(S2)
         # MRF regularization
         beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
-        Y_hat = G.dot(beta_mrf)
-        beta_refit = GTGpDsG.dot(S2 - Y_hat)
+        B2B = np.concatenate([B, B2]).transpose()
+        Y_hat = B2B.dot(beta_mrf)
+        XtX = X.transpose().dot(X)
+        XtXinvXt = linalg.lstsq(XtX, X.transpose())[0] 
+        alpha_refit = XtXinvXt.transpose().dot(S2 - Y_hat)
         # compute model statistics
+        beta_refit = np.concatenate([alpha_refit, beta_mrf])
         seqF = G.dot(beta_refit)
         eGlobal = S2 - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
@@ -47,7 +50,7 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         # covariance matrix of our components
         s_square = RSS / (noTimepoints-df-1)
         # Z-value of our parametric component
-        Z[i,] = beta_refit[0,:] / np.sqrt(s_square * covA[0,0])
+        Z[i,] = alpha_refit / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
