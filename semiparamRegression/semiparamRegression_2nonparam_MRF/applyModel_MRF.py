@@ -38,7 +38,7 @@ noTimepoints, noPixels = S2.shape
 
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-num_knots = P.shape[0]
+num_knots = P.shape[0] + P2.shape[0]
 num_clusters = 10
 
 #semiparametric regression
