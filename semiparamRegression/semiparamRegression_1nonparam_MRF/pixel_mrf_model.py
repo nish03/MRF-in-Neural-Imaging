@@ -5,16 +5,17 @@ import opengm
 
 
 def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels): 
+    alpha_param = beta[0,:].reshape(1,-1)
+    beta_nonparam = beta[1:]
     gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'diag')
-    gmm.fit(beta.T)
+    gmm.fit(beta_nonparam.T)
     means  = gmm.means_
-    GtM = G.dot(means.T)
     n_labels_pixels = num_clusters
     n_pixels=noPixels 
     pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
     for i in range(n_pixels):
-        temp = S2[:,i,numpy.newaxis] - GtM[:]
-        pixel_unaries[i,:] = numpy.linalg.norm(temp,axis=0)
+        for l in range(n_labels_pixels):
+            pixel_unaries[i,l] = numpy.linalg.norm(S2[:,i] - G.dot(numpy.concatenate([alpha_param[:,i], means.T[:,l]])))
     pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=1.0/n_labels_pixels,truncate=None)
     gm = opengm.graphicalModel([n_labels_pixels]*n_pixels)
     fids = gm.addFunctions(pixel_unaries)
@@ -22,7 +23,6 @@ def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels):
     fid = gm.addFunction(pixel_regularizer)
     vis = opengm.secondOrderGridVis(640,480)
     gm.addFactors(fid,vis)
-    #opengm.hdf5.saveGraphicalModel(gm,'model.h5','gm')
     inf_trws=opengm.inference.TrwsExternal(gm)
     visitor=inf_trws.timingVisitor()
     inf_trws.infer(visitor)
