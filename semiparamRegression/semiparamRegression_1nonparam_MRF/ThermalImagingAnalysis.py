@@ -35,11 +35,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         # MRF regularization
         beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
         Y_hat = G.dot(beta_mrf)
-        XtX = X.transpose().dot(X)
-        XtXinvXt = linalg.lstsq(XtX, X.transpose())[0] 
-        alpha_refit = XtXinvXt.transpose().dot(S2 - Y_hat)
-        # compute model statistics
-        beta_refit = np.concatenate([alpha_refit,beta_mrf])
+        beta_refit = GTGpDsG.dot(S2 - Y_hat)
         # compute model statistics
         seqF = G.dot(beta_refit)
         eGlobal = S2 - seqF
