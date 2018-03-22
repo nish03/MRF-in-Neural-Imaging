@@ -1,15 +1,14 @@
 import numpy
 from math import sqrt
-from sklearn import mixture
+import tensorflow as tf
 import opengm
-
+import gmm_tensorflow
 
 def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels): 
     alpha_param = beta[0,:].reshape(1,-1)
-    beta_nonparam = beta[1:]
-    gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'diag')
-    gmm.fit(beta_nonparam.T)
-    means  = gmm.means_
+    beta_nonparam = beta[1:].transpose()
+    datapoints, DIMENSIONS = beta_nonparam.shape
+    means = gmm_tensorflow(COMPONENTS = num_clusters, DIMENSIONS = DIMENSIONS , TRAINING_STEPS =1000, TOLERANCE=10e-6, beta_nonparam)
     n_labels_pixels = num_clusters
     n_pixels=noPixels 
     pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
