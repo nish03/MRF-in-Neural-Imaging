@@ -1,4 +1,5 @@
 import ActivityPatterns as ap
+import time
 import numpy as np
 import h5py
 import scipy.linalg as linalg
@@ -23,6 +24,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
+    lambdas = [1]
     GtG = G.transpose().dot(G)
     AIC = np.zeros([len(lambdas),noPixels])
     Z = np.zeros([len(lambdas),noPixels])
@@ -33,8 +35,9 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
         beta = GTGpDsG.dot(S2)
         # MRF regularization
+        print('MRF')
         beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
-        Y_hat = G.dot(beta_mrf)
+        Y_hat = B.transpose().dot(beta_mrf)
         beta_refit = GTGpDsG.dot(S2 - Y_hat)
         # compute model statistics
         seqF = G.dot(beta_refit)
@@ -46,7 +49,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         # covariance matrix of our components
         s_square = RSS / (noTimepoints-df-1)
         # Z-value of our parametric component
-        Z[i,] = alpha_refit / np.sqrt(s_square * covA[0,0])
+        Z[i,] = beta_refit[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
