@@ -4,9 +4,8 @@ import numpy as np
 import h5py
 import scipy.linalg as linalg
 import matplotlib.pyplot as plt
-import pixel_mrf_model as pm
 
-def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
+def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -24,7 +23,6 @@ def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
-    lambdas = [1]
     GtG = G.transpose().dot(G)
     pixel_unaries = np.zeros([noPixels, len(lambdas)],dtype=numpy.float32)
     AIC = np.zeros([len(lambdas),noPixels])
@@ -54,7 +52,6 @@ def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
     minAICcIdx = np.argmin(AIC,axis=0)
     Z = Z.transpose()
     Z_minAIC = Z[np.arange(Z.shape[0]), minAICcIdx]
-    lambda_pairwise = 1
     pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=lambda_pairwise,truncate=None)
     gm = opengm.graphicalModel([n_labels_pixels]*n_pixels)
     fids = gm.addFunctions(pixel_unaries)
@@ -66,5 +63,5 @@ def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
     visitor=inf_trws.timingVisitor()
     inf_trws.infer(visitor)
     argmin=inf_trws.arg()
-    #Z_new  an issue here !   
+    #Facing an issue here !   
     return Z_new
