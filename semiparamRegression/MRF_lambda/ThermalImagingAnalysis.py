@@ -1,4 +1,3 @@
-import ActivityPatterns as ap
 import time
 import numpy as np
 import h5py
