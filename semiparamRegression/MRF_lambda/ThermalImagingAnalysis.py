@@ -21,7 +21,7 @@ def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
     S_P = linalg.block_diag(E1,P)
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
-    lambdas= np.linspace(0.1,10,10)
+    lambdas= np.linspace(0.1,10,10) #need to decide on its values 
     GtG = G.transpose().dot(G)
     pixel_unaries = np.zeros([noPixels, len(lambdas)],dtype=numpy.float32)
     AIC = np.zeros([len(lambdas),noPixels])
