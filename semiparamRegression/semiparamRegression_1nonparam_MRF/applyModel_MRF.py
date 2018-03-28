@@ -39,6 +39,7 @@ noTimepoints, noPixels = S2.shape
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
 num_knots = P.shape[0] + 1 
 num_clusters = 10
+lambda_pairwise = 0.1
 
 #semiparametric regression
 Z = tai.semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtruth_foreground, groundtruth_background)
