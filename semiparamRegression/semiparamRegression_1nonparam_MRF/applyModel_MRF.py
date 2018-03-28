@@ -19,6 +19,9 @@ g = scipy.io.loadmat(g)
 
 S = numpy.array(f["S1024"].value)
 T = numpy.array(f["T1024"].value)
+groundtruthImg = numpy.array(f["groundtruthImg"].value)
+groundtruth_foreground = numpy.where(groundtruthImg > 0)[0]
+groundtruth_background = numpy.where(groundtruthImg == 0)[0]
 #f_P = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat", "r")
 #P = f_P["BPdir2"].value        # learned penalty matrix
 #P = P.transpose()              # P appears to be stored as transposed version of itself
@@ -43,9 +46,6 @@ plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
 #accuracy after pixel_mrf model
-groundtruthImg = numpy.array(f["groundtruthImg"].value)
-groundtruth_foreground = numpy.where(groundtruthImg > 0)[0]
-groundtruth_background = numpy.where(groundtruthImg == 0)[0]
 true_positive =  len(numpy.where(abs(Z[groundtruth_foreground,]) >= 5.2)[0])                                  
 false_positive = len(numpy.where(abs(Z[groundtruth_foreground,]) < 5.2)[0])
 true_negative = len(numpy.where(abs(Z[groundtruth_background,]) < 5.2)[0])
