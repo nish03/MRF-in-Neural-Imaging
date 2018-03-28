@@ -3,6 +3,7 @@ import numpy as np
 import h5py
 import scipy.linalg as linalg
 import matplotlib.pyplot as plt
+import opengm
 
 def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
