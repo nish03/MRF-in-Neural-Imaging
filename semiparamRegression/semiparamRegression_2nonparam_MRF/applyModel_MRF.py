@@ -9,18 +9,21 @@ import ActivityPatterns as ap
 import pixel_mrf_model as pm
 import ThermalImagingAnalysis as tai
 import scipy.io
-
+import sklearn.metrics
 
 # Data, parametric and non-parametric components 
 f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
-g = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_250.mat'
+g = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_415.mat'
 g = scipy.io.loadmat(g)
-h = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_250.mat'
+h = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_415.mat'
 h = scipy.io.loadmat(h)
 
 
 S = numpy.array(f["S1024"].value)
 T = numpy.array(f["T1024"].value)
+groundtruthImg = numpy.array(f["groundtruthImg"].value)
+groundtruth_foreground = numpy.where(groundtruthImg > 0)[0]
+groundtruth_background = numpy.where(groundtruthImg == 0)[0]
 #f_P = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat", "r")
 #P = f_P["BPdir2"].value        # learned penalty matrix
 #P = P.transpose()              # P appears to be stored as transposed version of itself
@@ -38,18 +41,15 @@ noTimepoints, noPixels = S2.shape
 
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-num_knots = P.shape[0] + P2.shape[0]
+num_knots = P.shape[0] + P2.shape[0] + 1
 num_clusters = 10
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, B2, P, P2, num_knots, num_clusters, noPixels)
+Z = tai.semiparamRegression(S2, X, B, B2, P, P2, num_knots, num_clusters, groundtruth_foreground, groundtruth_background, noPixels, lambda_pairwise)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
 #accuracy after pixel_mrf model
-groundtruthImg = numpy.array(f["groundtruthImg"].value)
-groundtruth_foreground = numpy.where(groundtruthImg > 0)[0]
-groundtruth_background = numpy.where(groundtruthImg == 0)[0]
 true_positive =  len(numpy.where(abs(Z[groundtruth_foreground,]) >= 5.2)[0])                                  
 false_positive = len(numpy.where(abs(Z[groundtruth_foreground,]) < 5.2)[0])
 true_negative = len(numpy.where(abs(Z[groundtruth_background,]) < 5.2)[0])
@@ -74,4 +74,4 @@ for i in range(len(Z_pred)):
     else:
        Z_pred[i] = 0
     
-F1 = f1_score(Z_true, Z_pred, average='binary')
+F1 = sklearn.metics.f1_score(Z_true, Z_pred, average='binary')
