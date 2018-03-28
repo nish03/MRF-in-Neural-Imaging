@@ -36,7 +36,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtru
         beta = GTGpDsG.dot(S2)
         # MRF regularization
         print('MRF')
-        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
+        beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels,lambda_pairwise) 
         Y_hat = B.transpose().dot(beta_mrf)
         beta_refit = np.zeros([num_knots, noPixels])
         beta_refit[:,groundtruth_background] = GTGpDsG.dot(S2[:,groundtruth_background] - Y_hat[:,groundtruth_background])
