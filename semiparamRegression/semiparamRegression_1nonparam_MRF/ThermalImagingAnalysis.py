@@ -6,7 +6,7 @@ import scipy.linalg as linalg
 import matplotlib.pyplot as plt
 import pixel_mrf_model as pm
 
-def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
+def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtruth_foreground, groundtruth_background):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -38,7 +38,9 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         print('MRF')
         beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
         Y_hat = B.transpose().dot(beta_mrf)
-        beta_refit = GTGpDsG.dot(S2 - Y_hat)
+        beta_refit = np.zeros([num_knots, noPixels])
+        beta_refit[:,groundtruth_background] = GTGpDsG.dot(S2[:,groundtruth_background] - Y_hat[:,groundtruth_background])
+        beta_refit[:,groundtruth_foreground] = beta[:,groundtruth_foreground]
         # compute model statistics
         seqF = G.dot(beta_refit)
         eGlobal = S2 - seqF
