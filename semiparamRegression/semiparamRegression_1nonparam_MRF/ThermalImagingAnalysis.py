@@ -24,7 +24,6 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtru
     Pterm = S_P.transpose().dot(S_P)
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10)
-    lambdas = [1]
     GtG = G.transpose().dot(G)
     AIC = np.zeros([len(lambdas),noPixels])
     Z = np.zeros([len(lambdas),noPixels])
