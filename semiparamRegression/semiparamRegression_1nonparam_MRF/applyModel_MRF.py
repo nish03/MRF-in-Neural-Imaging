@@ -42,7 +42,7 @@ num_clusters = 10
 lambda_pairwise = 0.1
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtruth_foreground, groundtruth_background)
+Z = tai.semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtruth_foreground, groundtruth_background, lambda_pairwise)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
