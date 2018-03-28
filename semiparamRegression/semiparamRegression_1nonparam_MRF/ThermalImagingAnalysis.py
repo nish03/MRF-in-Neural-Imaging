@@ -6,7 +6,7 @@ import scipy.linalg as linalg
 import matplotlib.pyplot as plt
 import pixel_mrf_model as pm
 
-def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtruth_foreground, groundtruth_background):
+def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, groundtruth_foreground, groundtruth_background, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
