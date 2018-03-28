@@ -5,7 +5,7 @@ import scipy.linalg as linalg
 import matplotlib.pyplot as plt
 import pixel_mrf_model as pm
 
-def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
+def semiparamRegression(S2, X, B, B2, P, P2, num_knots, num_clusters, groundtruth_foreground, groundtruth_background, noPixels, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -36,11 +36,10 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         beta_mrf = pm.pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels) 
         B2B = np.concatenate([B, B2]).transpose()
         Y_hat = B2B.dot(beta_mrf)
-        XtX = X.transpose().dot(X)
-        XtXinvXt = linalg.lstsq(XtX, X.transpose())[0] 
-        alpha_refit = XtXinvXt.transpose().dot(S2 - Y_hat)
+        beta_refit = np.zeros([num_knots, noPixels])
+        beta_refit[:,groundtruth_background] = GTGpDsG.dot(S2[:,groundtruth_background] - Y_hat[:,groundtruth_background])
+        beta_refit[:,groundtruth_foreground] = beta[:,groundtruth_foreground]
         # compute model statistics
-        beta_refit = np.concatenate([alpha_refit, beta_mrf])
         seqF = G.dot(beta_refit)
         eGlobal = S2 - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
@@ -50,7 +49,7 @@ def semiparamRegression(S2, X, B, B2, P, P2, num_knots,num_clusters, noPixels):
         # covariance matrix of our components
         s_square = RSS / (noTimepoints-df-1)
         # Z-value of our parametric component
-        Z[i,] = alpha_refit / np.sqrt(s_square * covA[0,0])
+        Z[i,] = beta_refit[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
