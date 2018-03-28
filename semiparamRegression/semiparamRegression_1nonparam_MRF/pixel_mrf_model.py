@@ -18,7 +18,6 @@ def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels,lambda_pairwise):
     n_pixels=noPixels 
     pixel_unaries = numpy.zeros((n_pixels,n_labels_pixels),dtype=numpy.float32)
     start_time = time.time()
-    #for i in range(n_pixels):
     for l in range(n_labels_pixels):
          mt = means.T[:,l]
          mt = mt[...,numpy.newaxis]
