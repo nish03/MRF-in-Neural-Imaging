@@ -43,7 +43,7 @@ def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
         # covariance matrix of our components
         s_square = RSS / (noTimepoints-df-1)
         # Z-value of our parametric component
-        Z[i,] = beta_refit[0,:] / np.sqrt(s_square * covA[0,0])
+        Z[i,] = beta[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
         AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
         AIC[i,] = AIC_i
