@@ -121,7 +121,7 @@ for i in range(len(Z_true)):
 
 Z_pred = numpy.zeros(len(Z_true))
 for i in range(len(Z_pred)):
-    if Z[i] >= 1:
+    if Z_pixelmrf[i] >= 1:
        Z_pred[i] = 1
     else:
        Z_pred[i] = 0
