@@ -71,3 +71,59 @@ for i in range(len(Z_pred)):
        Z_pred[i] = 0
     
 F1 = sklearn.metrics.f1_score(Z_true, Z_pred, average='binary')
+
+
+#Pixel MRF on Z values
+n_labels = 2
+n_pixels=noPixels 
+threshold = 5.2
+pixel_unaries = numpy.zeros((n_pixels,n_labels),dtype=numpy.float32)
+for l in range(n_pixels):
+         pixel_unaries[l,0] = Z[l,] - threshold
+         pixel_unaries[l,1] = threshold - Z[l,]
+
+
+pixel_regularizer = opengm.differenceFunction(shape=[n_labels,n_labels],norm=1,weight=1,truncate=None)
+gm = opengm.graphicalModel([n_labels]*n_pixels)
+fids = gm.addFunctions(pixel_unaries)
+gm.addFactors(fids,numpy.arange(n_pixels))
+fid = gm.addFunction(pixel_regularizer)
+vis = opengm.secondOrderGridVis(640,480)
+gm.addFactors(fid,vis)
+inf_trws=opengm.inference.TrwsExternal(gm)
+visitor=inf_trws.timingVisitor()
+start_time = time.time()
+inf_trws.infer(visitor)
+Z_pixelmrf =inf_trws.arg()
+
+
+
+#accuracy after pixel_mrf model
+groundtruthImg = numpy.array(f["groundtruthImg"].value)
+groundtruth_foreground = numpy.where(groundtruthImg > 0)[0]
+groundtruth_background = numpy.where(groundtruthImg == 0)[0]
+true_positive =  len(numpy.where(abs(Z[groundtruth_foreground,]) >= 1)[0])                                  
+false_positive = len(numpy.where(abs(Z[groundtruth_foreground,]) < 1)[0])
+true_negative = len(numpy.where(abs(Z[groundtruth_background,]) < 1)[0])
+false_negative = len(numpy.where(abs(Z[groundtruth_background,]) >= 1)[0])
+true_positive_rate = true_positive / numpy.float32(len(groundtruth_foreground))
+false_positive_rate = false_positive / numpy.float32(len(groundtruth_background))
+accuracy  = (true_positive + true_negative) / numpy.float32(len(groundtruth_background) + len(groundtruth_foreground))
+
+
+#F1 score metrics for better evaluation
+Z_true = groundtruthImg.flatten()
+for i in range(len(Z_true)):
+    if Z_true[i] != 0:
+       Z_true[i] = 1
+    else:
+       Z_true[i] = 0
+
+Z_pred = numpy.zeros(len(Z_true))
+for i in range(len(Z_pred)):
+    if Z[i] >= 1:
+       Z_pred[i] = 1
+    else:
+       Z_pred[i] = 0
+    
+F1 = sklearn.metrics.f1_score(Z_true, Z_pred, average='binary')
