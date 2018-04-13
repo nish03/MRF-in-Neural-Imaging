@@ -24,7 +24,7 @@ def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
     # allocate intermediate storage 
     lambdas= np.linspace(0.1,10,10) #need to decide on its values 
     GtG = G.transpose().dot(G)
-    pixel_unaries = np.zeros([noPixels, len(lambdas)],dtype=numpy.float32)
+    pixel_unaries = np.zeros([noPixels, len(lambdas)],dtype=np.float32)
     AIC = np.zeros([len(lambdas),noPixels])
     Z = np.zeros([len(lambdas),noPixels])
     for i in range(0,len(lambdas)):
@@ -37,7 +37,6 @@ def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
         seqF = G.dot(beta)
         eGlobal = S2 - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
-        pixel_unaries[:,i] = np.sqrt(RSS)
         df = np.trace(GTGpDsG.dot(G));
         covA_1 = linalg.solve(GtGpD,GtG)
         covA = linalg.solve(GtGpD.transpose(),covA_1.transpose()).transpose()
@@ -46,22 +45,30 @@ def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
         # Z-value of our parametric component
         Z[i,] = beta[0,:] / np.sqrt(s_square * covA[0,0])
         # compute AICc
-        AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
-        AIC[i,] = AIC_i
-
-    minAICcIdx = np.argmin(AIC,axis=0)
+        #AIC_i = np.log(RSS) + (2 * (df+1)) / (noTimepoints-df-2)
+        #AIC[i,] = AIC_i
+        pixel_unaries[:,i] = 1 / Z[i,]
+    n_labels_pixels = len(lambdas)
     Z = Z.transpose()
-    Z_minAIC = Z[np.arange(Z.shape[0]), minAICcIdx]
     pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=lambda_pairwise,truncate=None)
-    gm = opengm.graphicalModel([n_labels_pixels]*n_pixels)
+    gm = opengm.graphicalModel([n_labels_pixels]*noPixels)
     fids = gm.addFunctions(pixel_unaries)
-    gm.addFactors(fids,numpy.arange(n_pixels))
+    gm.addFactors(fids,np.arange(noPixels))
     fid = gm.addFunction(pixel_regularizer)
     vis = opengm.secondOrderGridVis(640,480)
     gm.addFactors(fid,vis)
-    inf_trws=opengm.inference.TrwsExternal(gm)
+    #inf_trws=opengm.inference.TrwsExternal(gm)
+    #inf_trws = opengm.inference.BeliefPropagation(gm,parameter=opengm.InfParam(damping=0.9))
+    inf_trws = opengm.inference.TreeReweightedBp(gm)
+    
     visitor=inf_trws.timingVisitor()
     inf_trws.infer(visitor)
     argmin=inf_trws.arg()
-    #Facing an issue here !   
+    h5f = h5py.File('res_ogm.h5', 'w')
+    h5f.create_dataset('amin', data=argmin)
+    h5f.close()
+    #opengm.hdf5.save(gm,'ogm_lambdaMRF.h5','lambdaMRF') ## doesnt work
+    Z_new = np.zeros([noPixels])
+    for i in range(0,noPixels):   
+		Z_new[i] = Z[i,argmin[i]]
     return Z_new

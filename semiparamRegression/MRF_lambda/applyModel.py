@@ -8,11 +8,11 @@ import h5py
 import ActivityPatterns as ap
 import ThermalImagingAnalysis as tai
 import scipy.io
-
+import sklearn.metrics
 
 # Data, parametric and non-parametric components 
-f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
-g = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_415.mat'
+f = h5py.File("/home/nico/Code/626510_sep.mat", "r")
+g = '/home/nico/Code/LearnedPenalties_Gaussian_BSpline_knots_415.mat'
 g = scipy.io.loadmat(g)
 
 
@@ -31,7 +31,7 @@ noTimepoints, noPixels = S2.shape
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise)
+Z = tai.semiparamRegression(S2, X, B, P, noPixels, 1)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
@@ -47,6 +47,7 @@ true_positive_rate = true_positive / numpy.float32(len(groundtruth_foreground))
 false_positive_rate = false_positive / numpy.float32(len(groundtruth_background))
 accuracy  = (true_positive + true_negative) / numpy.float32(len(groundtruth_background) + len(groundtruth_foreground))
 
+print("RES " + str(accuracy) + ": " + str(true_positive_rate) + ": " + str(false_positive_rate))
 
 #F1 score metrics for better evaluation
 Z_true = groundtruthImg.flatten()
@@ -63,4 +64,5 @@ for i in range(len(Z_pred)):
     else:
        Z_pred[i] = 0
     
-F1 = f1_score(Z_true, Z_pred, average='binary')
+F1 = sklearn.metrics.f1_score(Z_true, Z_pred, average='binary')
+print("RES " + str(F1))
