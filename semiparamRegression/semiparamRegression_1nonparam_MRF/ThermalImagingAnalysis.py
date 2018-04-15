@@ -4,8 +4,9 @@ import h5py
 import scipy.linalg as linalg
 import matplotlib.pyplot as plt
 import pixel_mrf_model as pm
+import opengm
 
-def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
+def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -34,7 +35,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
         beta = GTGpDsG.dot(S2)
         # MRF regularization
         print('MRF')
-        beta_mrf = pm.pixel_mrf_model(num_knots, num_clusters, beta, S2, G, noPixels) 
+        beta_mrf = pm.pixel_mrf_model(num_knots, num_clusters, beta, S2, G, noPixels, lambda_pairwise) 
         Y_hat = B.transpose().dot(beta_mrf)
         beta_refit = GTGpDsG.dot(S2 - Y_hat)
         # compute model statistics
@@ -55,5 +56,23 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels):
     minAICcIdx = np.argmin(AIC,axis=0)
     Z = Z.transpose()
     Z_minAIC = Z[np.arange(Z.shape[0]), minAICcIdx]
+    n_labels = 2
+    n_pixels=noPixels 
+    threshold = 5.2
+    pixel_unaries = np.zeros((n_pixels,n_labels),dtype=np.float32)
+    for l in range(n_pixels):
+        pixel_unaries[l,0] = Z_minAIC[l,] - threshold
+        pixel_unaries[l,1] = threshold - Z_minAIC[l,]
 
-    return Z_minAIC
+    pixel_regularizer = opengm.differenceFunction(shape=[n_labels,n_labels],norm=1,weight=1,truncate=None)
+    gm = opengm.graphicalModel([n_labels]*n_pixels)
+    fids = gm.addFunctions(pixel_unaries)
+    gm.addFactors(fids,np.arange(n_pixels))
+    fid = gm.addFunction(pixel_regularizer)
+    vis = opengm.secondOrderGridVis(640,480)
+    gm.addFactors(fid,vis)
+    inf_trws=opengm.inference.TrwsExternal(gm)
+    visitor=inf_trws.timingVisitor()
+    inf_trws.infer(visitor)
+    Z_new =inf_trws.arg()
+    return Z_new
