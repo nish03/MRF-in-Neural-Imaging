@@ -4,14 +4,14 @@ import opengm
 from sklearn import mixture
 import time
 
-def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels): 
+def pixel_mrf_model(num_knots,num_clusters,beta,S2,G, P2, noPixels, lambda_pairwise): 
     alpha_param = beta[0,:].reshape(1,-1)
-    beta_nonparam = beta[1:].transpose()
-    datapoints, DIMENSIONS = beta_nonparam.shape
+    beta_nonparam1 = beta[1:P2.shape[0]+1,]
+    beta_nonparam2 = beta[P2.shape[0]+1 :].transpose()
+    datapoints, DIMENSIONS = beta_nonparam2.shape
     start_time = time.time()
     gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'diag')
-    datapoints, DIMENSIONS = beta_nonparam.shape
-    gmm.fit(beta_nonparam)
+    gmm.fit(beta_nonparam2)
     means  = gmm.means_
     print('GMM elapsed: ' + str(time.time() - start_time) + ' s')
     n_labels_pixels = num_clusters
@@ -23,10 +23,10 @@ def pixel_mrf_model(num_knots,num_clusters,beta,S2,G,noPixels):
          mt = mt[...,numpy.newaxis]
          mt2 = numpy.repeat(mt,datapoints,axis=1)
          cc = numpy.concatenate([alpha_param, mt2])
-         est = S2 - G.dot(numpy.concatenate([alpha_param, mt2]))
+         est = S2 - G.dot(numpy.concatenate([alpha_param, beta_nonparam1, mt2]))
          pixel_unaries[:,l] = numpy.sqrt(numpy.sum(est**2, axis=0))
     print('UNARIES elapsed: ' + str(time.time() - start_time) + ' s')
-    pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=0.1,truncate=None)
+    pixel_regularizer = opengm.differenceFunction(shape=[n_labels_pixels,n_labels_pixels],norm=1,weight=lambda_pairwise,truncate=None)
     gm = opengm.graphicalModel([n_labels_pixels]*n_pixels)
     fids = gm.addFunctions(pixel_unaries)
     gm.addFactors(fids,numpy.arange(n_pixels))
