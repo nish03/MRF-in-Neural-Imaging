@@ -25,14 +25,14 @@ noTimepoints, noPixels = S2.shape
 
 
 #First non parametric component
-g = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_415.mat'
+g = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_428.mat'
 g = scipy.io.loadmat(g)
 B = g['B'].transpose()
 P = g['BPdir2']
 
 
 #mrf regularization
-h = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_415.mat'
+h = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_428.mat'
 h = scipy.io.loadmat(h)
 B2 = h['B'].transpose()
 P2 = h['BPdir2']
@@ -47,12 +47,12 @@ P2 = h['BPdir2']
 
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(numpy.squeeze(T2)).transpose();
-num_knots = P.shape[0] + P2.shape[0] + 1 
-num_clusters = 10
-
+num_knots =  P2.shape[0] 
+num_clusters = 12
+lambda_pairwise = 2.0
 
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, B2, P, P2, num_knots, num_clusters, noPixels)
+Z = tai.semiparamRegression(S2, X, B, B2, P, P2, num_knots, num_clusters, noPixels, lambda_pairwise)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
