@@ -3,7 +3,6 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy 
-import time 
 import h5py
 import MRF_model as em
 import scipy.io
