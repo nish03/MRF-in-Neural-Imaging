@@ -11,6 +11,7 @@ import ActivityPatterns as ap
 import pixel_mrf_model as pm
 import ThermalImagingAnalysis as tai
 import scipy.io
+import opengm
 import sklearn.metrics
 
 # Data and parametric component
