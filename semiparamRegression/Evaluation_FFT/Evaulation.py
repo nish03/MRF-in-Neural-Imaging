@@ -42,10 +42,11 @@ energyContribution = numpy.zeros(noElementsToAnalyse)
 for i in range(1,noElementsToAnalyse):
       energyContribution[i] = sum(abs(y[0:i])) / sum(abs(y[0:512]))
 
+plt.tick_params(labelsize = 15)
 x = numpy.linspace(0, 512, 512)
-plt.plot(x, energyContribution , label = 'Energy contribution', linewidth = 1.0, color='black')
-plt.xlabel(r'Positive spectral coponents',fontweight='bold',fontsize=10)
-plt.ylabel(r'Energy Contribution ',fontweight='bold', fontsize=10)
+plt.plot(x, energyContribution , label = 'Energy contribution', linewidth = 3.0, color='b')
+plt.xlabel(r'Positive spectral coponents',fontweight='bold',fontsize=20)
+plt.ylabel(r'Energy Contribution ',fontweight='bold', fontsize=20)
 plt.legend(prop={'size': 12})
 plt.show()
   
