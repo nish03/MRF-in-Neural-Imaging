@@ -9,10 +9,10 @@ import time
 
 
 # load data
-f_P = h5py.File("/scratch/p_optim/nish/Master-Thesis/Penalties/Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat","r")
+f_P = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat","r")
 f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
-S = np.array(f["seq"].value).transpose()
-T = np.squeeze(np.array(f["T"].value))
+S = np.array(f["S1024"].value)
+T = np.squeeze(np.array(f["T1024"].value))
 f.close()
 S2 = S[0:1024,]
 T2 = T[0:1024,]
