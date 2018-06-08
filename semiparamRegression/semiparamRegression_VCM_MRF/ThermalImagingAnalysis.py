@@ -73,14 +73,15 @@ def semiparamRegressio_VCM(S, T, B, P):
         num_clusters = 30
         lambda_pairwise = 1
         coeff_BcosSEP_smooth = al.pixel_mrf_coeff(num_clusters, coeff_BcosSEP , BcosSEP, noPixels, lambda_pairwise)
+        Y_hat = BcosSEP.transpose().dot(coeff_BcosSEP_smooth)
 	#Regularize coefficients of BsinSEP using MRF
-        coeff_BsinSEP = beta[dim:dim*2,:]    
-        coeff_BsinSEP_smooth = al.pixel_mrf_coeff(num_clusters, coeff_BsinSEP, BsinSEP, noPixels, lambda_pairwise)
+        #coeff_BsinSEP = beta[dim:dim*2,:]    
+        #coeff_BsinSEP_smooth = al.pixel_mrf_coeff(num_clusters, coeff_BsinSEP, BsinSEP, noPixels, lambda_pairwise)
+        #compute model statistics
+        beta_refit = GTGpDsG.dot(S2 - Y_hat)
+        seqF = G.dot(beta_refit)
         # compute model statistics
-        beta_smooth = np.concatenate([coeff_BcosSEP_smooth, coeff_BsinSEP_smooth, beta[dim*2:,]])
-        seqF = G.dot(beta)
-        # compute model statistics
-        eGlobal = S2 - seqF
+        eGlobal = S2 - Y_hat - seqF
         RSS = np.sum(eGlobal ** 2, axis=0)
         df = np.trace(GTGpDsG.dot(G))
 
