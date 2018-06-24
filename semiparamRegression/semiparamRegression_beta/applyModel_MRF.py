@@ -29,7 +29,7 @@ P = g['BPdir2']
 X = ap.computeGaussianActivityPattern(np.squeeze(T2)).transpose();
 lambda_pairwise = 1
 #semiparametric regression
-Z = tai.semiparamRegression(S2, X, B, P, num_knots, noPixels,lambda_pairwise)
+Z = tai.semiparamRegression(S2, X, B, P, noPixels,lambda_pairwise)
 plt.imshow(Z.reshape(640,480).transpose())
 plt.show()
 
