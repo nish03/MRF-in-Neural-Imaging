@@ -4,12 +4,14 @@ import time
 import h5py
 import scipy.linalg as linalg
 import ActivityPatterns as ap
+import ThermalImagingAnalysis as tai
 import scipy.io
 import sklearn.metrics
 from sklearn import mixture
 import opengm
 from scipy.linalg import norm
 from numpy.linalg import lstsq
+
 
 # Data and parametric component
 f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
