@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pixel_mrf_model as pm
 import opengm
 
-def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, lambda_pairwise):
+def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -60,7 +60,7 @@ def semiparamRegression(S2, X, B, P, num_knots,num_clusters, noPixels, lambda_pa
     pairwise_energy = np.zeros(len(lambdas)*len(lambdas),dtype=np.float32).reshape(len(lambdas),len(lambdas))           
     for l in range(len(lambdas)):             
         for k in range(len(lambdas)):                    
-            pairwise_energy[l,k] = norm(means[l,:] - means[k,:]) 
+            pairwise_energy[l,k] = lambda_pairwise*norm(means[l,:] - means[k,:]) 
            
     fid = gm.addFunction(pairwise_energy)
     vis = opengm.secondOrderGridVis(640,480)
