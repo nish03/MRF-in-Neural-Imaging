@@ -14,22 +14,24 @@ from numpy.linalg import lstsq
 
 
 # Data and parametric component
-f = h5py.File("/scratch/p_optim/nish/Master-Thesis/semiparamRegression_2nonparam_MRF/626510_sep.mat", "r")
-S = np.array(f["S1024"].value)
-T = np.array(f["T1024"].value)
+pPenalty = "Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat"
+pioData = h5py.File("626510_sep.mat","r")
+S = np.array(pioData["S1024"])
+T = np.array(pioData["T1024"])
 S2 = S[0:1024,]
 T2 = T[0:1024,]
 noTimepoints, noPixels = S2.shape
-
-#non parametric component
-g = '/scratch/p_optim/nish/Master-Thesis/Penalties/LearnedPenalties_Gaussian_BSpline_knots_428.mat'
-g = scipy.io.loadmat(g)
-B = g['B'].transpose()
-P = g['BPdir2']
+f_P = h5py.File(pPenalty, "r")
+P = f_P["BPdir2"].value   # learned penalty matrix
+print('[INFO] P is being transposed\n')
+P = P.transpose() # P appears to be stored as transposed version of itself
+B = f_P["B"].value # basis matrix
 
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(np.squeeze(T2)).transpose();
 lambda_pairwise = 1
+num_clusters = 10
+
 #semiparametric regression
 Z = tai.semiparamRegression(S2, X, B, P, noPixels,lambda_pairwise)
 plt.imshow(Z.reshape(640,480).transpose())
