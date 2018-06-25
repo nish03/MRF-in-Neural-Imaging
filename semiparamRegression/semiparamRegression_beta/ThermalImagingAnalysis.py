@@ -13,7 +13,7 @@ from scipy.linalg import norm
 from numpy.linalg import lstsq
 
 
-def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
+def semiparamRegression(S2, X, B, P, noPixels, lambda_pairwise):
     """Apply semiparametric regression framework to imaging data.
     S: m x n data cube with m time series of length n
     X: length m vector of discretized parametric function
@@ -76,7 +76,7 @@ def semiparamRegression(S2, X, B, P, num_knots, noPixels, lambda_pairwise):
     visitor=inf_trws.timingVisitor()
     inf_trws.infer(visitor)
     argmin=inf_trws.arg()
-    pbeta = np.zeros((noPixels,num_knots))
+    pbeta = np.zeros((noPixels,len(lambdas)))
     pbeta = [means[i,:] for i in argmin]
     pbeta = np.asarray(pbeta)
     pbeta = pbeta.T
