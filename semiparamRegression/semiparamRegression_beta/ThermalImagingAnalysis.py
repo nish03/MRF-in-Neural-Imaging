@@ -92,6 +92,7 @@ def semiparamRegression(S2, X, B, P, num_clusters, noPixels, lambda_pairwise):
     inf_trws.infer(visitor)
     argmin=inf_trws.arg()
     # we dont need to recompute Z as we already have the Z value for each pixel and label
+    Z_mrf = np.zeros([noPixels])
     for j in range(noPixels):
         Z_mrf[j] = Zcp[argmin[j],j]
     return Z_mrf
