@@ -7,8 +7,11 @@ import ActivityPatterns as ap
 import ThermalImagingAnalysis as tai
 import scipy.io
 import sklearn.metrics
+import time
+from sklearn.cluster import KMeans
 from sklearn import mixture
 import opengm
+from scipy import ndimage
 from scipy.linalg import norm
 from numpy.linalg import lstsq
 from numpy.linalg import inv
@@ -88,19 +91,59 @@ def semiparamRegression(S2, X, B, P, num_clusters, noPixels, lambda_pairwise):
     prepare potential values for our MRF
     '''
     Z = np.zeros([num_clusters,len(lambdas),noPixels])
+    #pairwise potential 
+    pairwise_potential = np.zeros(num_clusters*num_clusters,dtype=np.float32).reshape(num_clusters,num_clusters)       
+
+    GtGpD = GtG + np.eye(513) 
+    GTGpDsG = linalg.solve(GtGpD,G.transpose())
+    beta_noP = GTGpDsG.dot(S2)
+
     for i in range(0,len(lambdas)):
         # fit model using penalised normal equations
         lambda_i = lambdas[i]
         GtGpD = GtG + lambda_i * Pterm;
         GTGpDsG = linalg.solve(GtGpD,G.transpose())
         beta = GTGpDsG.dot(S2)
-        gmm = mixture.GaussianMixture(n_components=num_clusters,covariance_type = 'diag')
-        gmm.fit(beta[1:,].T)
-        means = gmm.means_
+        noKnots,noPixels = beta.shape
+        Kb = np.zeros([num_clusters,noKnots-1,noPixels])
+        print('precomputing data for pairwise potential')
+        start_time = time.time()
         for l in range(0,num_clusters):
-            mt = means.T[:,l]
-            mt = mt[...,np.newaxis]
-            mt2 = np.repeat(mt,noPixels,axis=1)
+              start_time = time.time()
+              Kb[l,:,:] = smoothBetaWithGaussian(beta_noP[1:,],l+1)
+              runtime = time.time() - start_time
+              print(str(l) + " (" + str(runtime) + "s)")
+ 
+        runtime = time.time() - start_time
+        print("Elapsed time " + str(runtime) + "s")
+ 
+        start_time = time.time()
+        for l in range(0,num_clusters):
+            start_time = time.time()
+            for k in range(l,num_clusters):
+		#val = norm(smoothBetaWithGaussian(beta[1:,],l+1) - smoothBetaWithGaussian(beta[1:,],k+1), ord=2)
+                val = norm(Kb[l] - Kb[k])
+                pairwise_potential[l,k] = val
+                pairwise_potential[k,l] = val
+            runtime = time.time() - start_time
+            print(str(l) + " (" + str(runtime) + "s)")
+
+	pairwise_potential = pairwise_potential / np.max(pairwise_potential)
+        runtime = time.time() - start_time
+        print("Elapsed time " + str(runtime) + "s")
+        seqF = G.dot(beta)
+        eGlobal = S2 - seqF
+        RSS = np.sum(eGlobal ** 2, axis=0)
+        df = np.trace(GTGpDsG.dot(G));
+        covA_1 = linalg.solve(GtGpD,GtG)
+        covA = linalg.solve(GtGpD.transpose(),covA_1.transpose()).transpose()
+        # covariance matrix of our components
+        s_square = RSS / (noTimepoints-df-1)
+        # refit Z-value of our parametric component
+        Zast = beta[0,:] / np.sqrt(s_square * covA[0,0])
+        print('Z*_0 = ' + str(Zast[0]))
+        for l in range(0,num_clusters):
+            mt2 = Kb[l,:,:]
             Y_gmm = B.transpose().dot(mt2)
             beta_refit = GTGpDsG.dot(S2 - Y_gmm)
             # compute model statistics
@@ -114,33 +157,46 @@ def semiparamRegression(S2, X, B, P, num_clusters, noPixels, lambda_pairwise):
             s_square = RSS / (noTimepoints-df-1)
             # refit Z-value of our parametric component
             Z[l,i,] = beta_refit[0,:] / np.sqrt(s_square * covA[0,0])
-
+            print('Z_0 = ' + str(Z[l,i,0]))
+            
     '''
     MRF inference
     '''
     # for each cluster, pixel: compute Z_min (marginalize lambda)
     Zcp = Z.min(axis=1)
+    print('storing Z')
+    np.save('Z.npy',Z)
+    print('done')
     #unary potential
     gm = opengm.graphicalModel([num_clusters]*noPixels)
     unary_potential = np.zeros([noPixels, num_clusters],dtype=np.float32)
     for l in range(0,num_clusters):
-    	unary_potential[:,l] = -1 * abs(Zcp[l,])
+#    	unary_potential[:,l] = -1 * abs(Zcp[l,]) 
+        unary_potential[:,l] = Zcp[l,] - Zast 
+    unary_potential = unary_potential / np.max(abs(unary_potential))
     fids = gm.addFunctions(unary_potential)
     gm.addFactors(fids,np.arange(noPixels))
-    #pairwise potential 
-    pairwise_potential = np.zeros(num_clusters*num_clusters,dtype=np.float32).reshape(num_clusters,num_clusters)       
-    for l in range(num_clusters):         
-        for k in range(num_clusters):            
-            pairwise_potential[l,k] = lambda_pairwise*norm(means[l,:] - means[k,:],ord=2)      
+    np.save('pw_potential.npy',pairwise_potential)
+    np.save('unary_potential.npy',unary_potential)
     fid = gm.addFunction(pairwise_potential)
     vis = opengm.secondOrderGridVis(640,480)
-    gm.addFactors(fid,vis)
+    gm.addFactors(fid, vis)
     inf_trws = opengm.inference.TrwsExternal(gm)   
     visitor=inf_trws.timingVisitor()
     inf_trws.infer(visitor)
     argmin=inf_trws.arg()
+    np.save('amin.npy',argmin)
     # we dont need to recompute Z as we already have the Z value for each pixel and label
     Z_mrf = np.zeros([noPixels])
     for j in range(noPixels):
         Z_mrf[j] = Zcp[argmin[j],j]
     return Z_mrf
+
+def smoothBetaWithGaussian(b,h):
+    h = h
+    b = b.transpose()
+    noPixels,noKnots = b.shape
+    b = np.reshape(b,[640, 480, noKnots])
+    y_g3d = ndimage.gaussian_filter(b[:,:,:],sigma=(h,h,1))
+    y_g3d = np.reshape(y_g3d,[640*480, noKnots]).transpose()
+    return y_g3d

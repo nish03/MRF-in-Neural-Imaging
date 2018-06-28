@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 import time 
 import h5py
@@ -11,7 +11,6 @@ from sklearn import mixture
 import opengm
 from scipy.linalg import norm
 from numpy.linalg import lstsq
-
 
 # Data and parametric component
 pPenalty = "Penalty_Gaussian_1024fr_2.5Hz_TruncatedWaveletBasis.mat"
@@ -27,16 +26,14 @@ print('[INFO] P is being transposed\n')
 P = P.transpose() # P appears to be stored as transposed version of itself
 B = f_P["B"].value # basis matrix
 
-
 #compute gaussian activity pattern
 X = ap.computeGaussianActivityPattern(np.squeeze(T2)).transpose();
 lambda_pairwise = 1
 num_clusters = 10
-#semiparametric regression
+#sdsemiparametric regression
 Z = tai.semiparamRegression(S2, X, B, P, num_clusters,noPixels,lambda_pairwise)
-plt.imshow(Z.reshape(640,480).transpose())
-plt.show()
-
+#plt.imshow(Z.reshape(640,480).transpose())
+#plt.show()
 
 #accuracy after pixel_mrf model
 groundtruthImg = np.array(pioData["groundtruthImg"].value)
@@ -67,5 +64,6 @@ for i in range(len(Z_pred)):
        Z_pred[i] = 0
         
                    
-plt.imshow(Z_pred.reshape(640,480).transpose())
+#plt.imshow(Z_pred.reshape(640,480).transpose())
 F1 = sklearn.metrics.f1_score(Z_true, Z_pred, average='binary')
+print('+++ F1 ' + str(F1))
