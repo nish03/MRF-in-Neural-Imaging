@@ -172,7 +172,7 @@ def semiparamRegression(S2, X, B, P, num_clusters, noPixels, lambda_pairwise):
     unary_potential = np.zeros([noPixels, num_clusters],dtype=np.float32)
     for l in range(0,num_clusters):
 #    	unary_potential[:,l] = -1 * abs(Zcp[l,]) 
-        unary_potential[:,l] = Zcp[l,] - Zast 
+        unary_potential[:,l] = Zast - Zcp[l,] 
     unary_potential = unary_potential / np.max(abs(unary_potential))
     fids = gm.addFunctions(unary_potential)
     gm.addFactors(fids,np.arange(noPixels))
